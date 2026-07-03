@@ -2397,7 +2397,7 @@ DB.init();
                 'api-settings': `
                     <div class="app-header"><span style="color:#775C56" class="cursor-pointer close-btn w-10 inline-block">‹</span><h2 class="font-bold" style="color:#775C56">API 设置</h2><span class="w-10"></span></div>
                     <div class="app-content p-5">
-                        <div class="form-group"><label>模型平台</label><select id="api-platform" class="w-full p-2 border rounded-lg"><option value="openai">OpenAI</option><option value="gemini">Gemini</option><option value="deepseek">DeepSeek</option><option value="MyAPI">MyAPI</option></select></div>
+                        <div class="form-group"><label>模型平台</label><select id="api-platform" class="w-full p-2 border rounded-lg"><option value="openai">OpenAI</option><option value="gemini">Gemini</option><option value="deepseek">DeepSeek</option><option value="glm">GLM / 智谱</option><option value="MyAPI">MyAPI</option></select></div>
                         <div class="form-group"><label>API 接口地址</label><input type="text" id="api-endpoint" placeholder="接口地址 (例如 https://api.openai.com/v1)"></div>
                         <div class="form-group"><label>API 密钥</label><input type="password" id="api-key" placeholder="API Key"></div>
                         <div class="form-group">
@@ -4637,15 +4637,41 @@ DB.init();
                                         messages.unshift({ role: 'system', content: systemPrompt });
                                     }
 
-                                    const payload = ApiHandler.generateChatPayload(pPlat, ep, apiKey, m, messages);
+                                    // 把带图片(image_url)的消息压平成纯文字，供不支持看图的模型降级使用
+                                    const _flattenToText = (msgs) => msgs.map(mm => {
+                                        if (Array.isArray(mm.content)) {
+                                            const t = mm.content.filter(c => c && c.type === 'text').map(c => c.text).join('\n');
+                                            return { role: mm.role, content: t || '[图片]' };
+                                        }
+                                        return mm;
+                                    });
+                                    // 若这个接口之前已知不支持看图，直接降级为纯文字，省得再报错
+                                    const _noVisionKey = 'novision_' + (ep || pPlat || '');
+                                    if (localStorage.getItem(_noVisionKey)) messages = _flattenToText(messages);
+
+                                    let payload = ApiHandler.generateChatPayload(pPlat, ep, apiKey, m, messages);
                                     // 发起请求前就显示"正在输入…"（API 要等几秒，这段时间让用户看到对方在打字）
                                     const _titleEl = p.querySelector('.title');
                                     const _savedTitle0 = _titleEl ? _titleEl.textContent : '';
                                     if (_titleEl) _titleEl.textContent = '对方正在输入…';
-                                    const res = await fetch(payload.url, payload.options);
+                                    let res = await fetch(payload.url, payload.options);
+                                    let errObj = res.ok ? null : await res.json().catch(()=>({}));
+                                    // 模型不支持看图（如 GLM 非视觉模型）→ 自动把图片转成纯文字重发一次，并记住这个接口
+                                    if (!res.ok) {
+                                        const _emsg = ((errObj && (errObj.error?.message || errObj.message)) || '') + '';
+                                        const _visionErr = /content\.?type|image_url|不支持.*图|vision|multimodal|取值范围.*text|invalid.*content/i.test(_emsg);
+                                        const _hasVision = messages.some(mm => Array.isArray(mm.content));
+                                        if (_visionErr && _hasVision) {
+                                            try { localStorage.setItem(_noVisionKey, '1'); } catch(e) {}
+                                            messages = _flattenToText(messages);
+                                            payload = ApiHandler.generateChatPayload(pPlat, ep, apiKey, m, messages);
+                                            res = await fetch(payload.url, payload.options);
+                                            errObj = res.ok ? null : await res.json().catch(()=>({}));
+                                        }
+                                    }
                                     if (!res.ok) {
                                         if (_titleEl) _titleEl.textContent = _savedTitle0;
-                                        const err = await res.json().catch(()=>({}));
+                                        const err = errObj || {};
                                         // 429限流：把 retry-after 头和 status 也带进错误信息，让后面的 catch 能解析
                                         let errPrefix = '';
                                         if (res.status === 429) {
@@ -7743,16 +7769,30 @@ DB.init();
                 key.value = localStorage.getItem('apiKey') || '';
                 modelCustom.value = localStorage.getItem('apiModel') || '';
 
-                // 【DeepSeek 便捷预填】用户选了 DeepSeek 时，自动填好官方端点和推荐模型
-                // 朋友不用记 api.deepseek.com 这种地址，省心。OpenAI/Gemini/MyAPI 不变
+                // 【官方平台·地址自动预填】选了官方平台就自动填好地址，朋友不用记 api.xxx.com 这些
+                // 只在地址为空、或还是别的平台的官方地址（说明没自定义过）时才替换，不会覆盖你手填的自定义地址
+                const OFFICIAL = {
+                    openai:   'https://api.openai.com',
+                    gemini:   'https://generativelanguage.googleapis.com',
+                    deepseek: 'https://api.deepseek.com',
+                    glm:      'https://open.bigmodel.cn/api/paas/v4'
+                };
+                const OFFICIAL_URLS = Object.values(OFFICIAL);
+                const SUGGEST_MODEL = { deepseek: 'deepseek-chat', glm: 'glm-4-flash' };
                 platform.addEventListener('change', () => {
-                    if (platform.value === 'deepseek') {
-                        if (!endpoint.value || endpoint.value === 'https://api.openai.com' || endpoint.value === '') {
-                            endpoint.value = 'https://api.deepseek.com';
-                        }
-                        if (!modelCustom.value || /^gpt-/i.test(modelCustom.value)) {
-                            modelCustom.value = 'deepseek-chat';
-                        }
+                    const off = OFFICIAL[platform.value];
+                    if (off) {
+                        const cur = (endpoint.value || '').trim().replace(/\/+$/, '');
+                        if (!cur || OFFICIAL_URLS.includes(cur)) endpoint.value = off;
+                    } else if (platform.value === 'MyAPI') {
+                        // 切到 MyAPI：若之前是某个官方地址就清空，方便自己填
+                        const cur = (endpoint.value || '').trim().replace(/\/+$/, '');
+                        if (OFFICIAL_URLS.includes(cur)) endpoint.value = '';
+                    }
+                    // 模型：只有 deepseek / glm 这种模型名不好记的，帮忙填个推荐默认
+                    const sm = SUGGEST_MODEL[platform.value];
+                    if (sm && (!modelCustom.value.trim() || /^(gpt-|deepseek|glm-|gemini)/i.test(modelCustom.value))) {
+                        modelCustom.value = sm;
                     }
                 });
 
@@ -10818,21 +10858,34 @@ const ApiHandler = {
      * Fetches the list of available models from the specified API endpoint.
      */
     async fetchModels(platform, endpoint, apiKey) {
-        if (platform === 'openai' || platform === 'MyAPI' || platform === 'deepseek') {
-            // 三个平台都是 OpenAI 兼容格式，统一处理 baseUrl：
+        if (platform === 'openai' || platform === 'MyAPI' || platform === 'deepseek' || platform === 'glm') {
+            // 这些平台都是 OpenAI 兼容格式，统一处理 baseUrl：
             // - openai: 用户填了 endpoint 就用用户的（支持代理/Azure/中转），否则用官方
             // - deepseek: 同上，默认 api.deepseek.com
+            // - glm: 默认 open.bigmodel.cn/api/paas/v4
             // - MyAPI: 必须用户填 endpoint
             let baseUrl;
             if (platform === 'openai') {
                 baseUrl = endpoint ? this.getBaseUrl(endpoint) : 'https://api.openai.com';
             } else if (platform === 'deepseek') {
                 baseUrl = endpoint ? this.getBaseUrl(endpoint) : 'https://api.deepseek.com';
+            } else if (platform === 'glm') {
+                baseUrl = (endpoint || 'https://open.bigmodel.cn/api/paas/v4');
             } else {
                 baseUrl = this.getBaseUrl(endpoint);
             }
-            
-            const url = `${baseUrl}/v1/models`;
+
+            // GLM / MyAPI 若地址已带版本号（如 GLM 的 .../paas/v4），模型列表用 /models 而不是 /v1/models
+            let url;
+            if (platform === 'MyAPI' || platform === 'glm') {
+                let raw = (baseUrl || '').trim().replace(/\/+$/, '');
+                if (raw.startsWith('http://')) raw = 'https://' + raw.slice(7);
+                else if (raw && !raw.startsWith('https://')) raw = 'https://' + raw;
+                raw = raw.replace(/\/chat\/completions$/, '');
+                url = /\/v\d+$/.test(raw) ? `${raw}/models` : `${this.getBaseUrl(raw)}/v1/models`;
+            } else {
+                url = `${baseUrl}/v1/models`;
+            }
             const headers = { 'Authorization': `Bearer ${apiKey}` };
             let response;
             try {
@@ -10898,9 +10951,26 @@ const ApiHandler = {
             // DeepSeek 默认走官方端点，但允许用户填自定义（比如 Cloudflare AI Gateway 中转）
             const baseUrl = endpoint ? this.getBaseUrl(endpoint) : 'https://api.deepseek.com';
             url = `${baseUrl}/v1/chat/completions`;
-        } else { // MyAPI
-            const baseUrl = this.getBaseUrl(endpoint);
-            url = `${baseUrl}/v1/chat/completions`;
+        } else if (platform === 'glm') {
+            // GLM/智谱：官方 OpenAI 兼容端点，路径已含版本号且不用 /v1
+            let base = (endpoint || 'https://open.bigmodel.cn/api/paas/v4').trim().replace(/\/+$/, '');
+            if (base.startsWith('http://')) base = 'https://' + base.slice(7);
+            else if (!base.startsWith('https://')) base = 'https://' + base;
+            base = base.replace(/\/chat\/completions$/, '');
+            url = `${base}/chat/completions`;
+        } else { // MyAPI —— 智能拼接，兼容 GLM/智谱等「地址里已含版本号、不该再加 /v1」的接口
+            let raw = (endpoint || '').trim().replace(/\/+$/, '');
+            if (raw.startsWith('http://')) raw = 'https://' + raw.slice(7);
+            else if (raw && !raw.startsWith('https://')) raw = 'https://' + raw;
+            if (/\/chat\/completions$/.test(raw)) {
+                url = raw;                          // 用户填了完整地址，直接用
+            } else if (/\/v\d+$/.test(raw)) {
+                url = raw + '/chat/completions';    // 结尾已带版本号（如 .../paas/v4），不再塞 /v1
+            } else if (/\/inference$/.test(raw)) {
+                url = raw + '/chat/completions';    // GitHub Models（.../inference）也不用 /v1
+            } else {
+                url = raw + '/v1/chat/completions'; // 只填了域名，按 OpenAI 惯例补全
+            }
         }
         
         body = JSON.stringify({
