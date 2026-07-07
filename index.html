@@ -2495,7 +2495,7 @@ DB.init();
                             <h3 class="font-bold mb-3 border-l-4 pl-2" style="color:#775C56; border-color:#D5EBE4;">记忆</h3>
                             <div class="mb-3" style="display:none;"><label class="text-sm font-medium" style="color:#775C56;">记忆数 <span style="font-size:11px;color:#b0a090;font-weight:normal;">（AI 记得最近几轮对话，调小更省钱）</span><input type="number" id="ai-context-limit" value="20" min="2" max="100" class="float-right w-16 text-center rounded" style="background:#FBF9F4; color:#775C56; border:1px solid #775C56;"></label></div>
                             <div class="mb-3"><label class="text-sm font-medium block mb-1" style="color:#775C56;">世界书（可多选，聊到关键词时自动激活）</label><div id="ai-world-book-list" class="w-full p-2 rounded text-sm" style="background:#FBF9F4; color:#775C56; border:1px solid #775C56; max-height:140px; overflow-y:auto;"><div style="color:#b0a090;font-size:12px;">暂无世界书，先去「世界书」app 创建</div></div></div>
-                            <div><label class="text-sm font-medium block mb-1" style="color:#775C56;">手动记忆 <span id="ai-manual-memory-counter" style="font-size:11px;color:#b0a090;font-weight:normal;float:right;">0 / 3000 字</span></label><textarea id="ai-manual-memory" rows="2" class="w-full p-2 rounded-lg text-sm resize-none" style="background:white; color:#775C56; border:none;"></textarea><div id="ai-manual-memory-warn" style="display:none;font-size:11px;color:#c47b6a;margin-top:4px;">记得太多 AI 会反应变慢、也会更费 token 哦～</div></div>
+                            <div><label class="text-sm font-medium block mb-1" style="color:#775C56;">手动记忆 <span style="font-size:11px;color:#b0a090;font-weight:normal;">（想让 TA 一直记得的事，写多少都可以）</span></label><textarea id="ai-manual-memory" rows="2" class="w-full p-2 rounded-lg text-sm resize-none" style="background:white; color:#775C56; border:none;"></textarea><div id="ai-manual-memory-warn" style="display:none;font-size:11px;color:#c47b6a;margin-top:4px;">记得太多 AI 会反应变慢、也会更费 token 哦～</div></div>
                         </div>
                         <div class="rounded-xl p-4 mb-6" style="background:#FBF9F4; box-shadow: 0 2px 8px rgba(119,92,86,0.15);">
                             <h3 class="font-bold mb-3 border-l-4 pl-2" style="color:#775C56; border-color:#FFD3D4;">模式</h3>
@@ -9962,23 +9962,11 @@ DB.init();
                 const contextLimitInput = appPage.querySelector('#ai-context-limit');
                 const worldBookListEl = appPage.querySelector('#ai-world-book-list');
                 const manualMemoryInput = appPage.querySelector('#ai-manual-memory');
-                const manualMemoryCounter = appPage.querySelector('#ai-manual-memory-counter');
                 const manualMemoryWarn = appPage.querySelector('#ai-manual-memory-warn');
-                // 手动记忆字数实时显示（软上限 3000 字，超过给柔和提示但不阻止）
+                // 手动记忆不再显示字数上限（避免误导）；只在写得很长时给个柔和提示，不阻止
                 const _updateManualMemoryCount = () => {
-                    if (!manualMemoryInput || !manualMemoryCounter) return;
-                    const len = manualMemoryInput.value.length;
-                    manualMemoryCounter.textContent = `${len} / 3000 字`;
-                    if (len > 3000) {
-                        manualMemoryCounter.style.color = '#c47b6a';
-                        if (manualMemoryWarn) manualMemoryWarn.style.display = 'block';
-                    } else if (len > 2400) {
-                        manualMemoryCounter.style.color = '#d4a373';
-                        if (manualMemoryWarn) manualMemoryWarn.style.display = 'none';
-                    } else {
-                        manualMemoryCounter.style.color = '#b0a090';
-                        if (manualMemoryWarn) manualMemoryWarn.style.display = 'none';
-                    }
+                    if (!manualMemoryInput || !manualMemoryWarn) return;
+                    manualMemoryWarn.style.display = manualMemoryInput.value.length > 3000 ? 'block' : 'none';
                 };
                 if (manualMemoryInput) {
                     manualMemoryInput.addEventListener('input', _updateManualMemoryCount);
