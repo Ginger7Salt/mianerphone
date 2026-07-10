@@ -8619,6 +8619,25 @@ DB.init();
             function hsOpenFocus(appPage, c, userNick, onStatsUpdate) {
                 const layer = hsOpenLayer(appPage, '一起专注', '');
                 const body = layer.querySelector('.hs-layer-body');
+                // 断点续算：如果之前有一场专注因为切后台/锁屏/页面被系统回收而"消失"，
+                // 重新打开时用真实时间戳补算，该完成的直接结算掉落食物，没到时间的接着倒计时
+                const pending = hsGet(c.id, 'focusActive', null);
+                if (pending && pending.startTime && pending.mins) {
+                    const elapsedSec = Math.floor((Date.now() - pending.startTime) / 1000);
+                    const totalSec = pending.mins * 60;
+                    if (elapsedSec >= totalSec) {
+                        hsSet(c.id, 'focusActive', null);
+                        body.innerHTML = '<div style="text-align:center;padding:30px 20px;color:#9A7872;font-size:13px;">上次的专注时间已经到啦，正在结算…</div>';
+                        hsFinishFocus(appPage, layer, body, c, userNick, pending.mins, pending.task || '一件重要的事', onStatsUpdate);
+                        return;
+                    } else {
+                        hsResumeFocus(appPage, layer, body, c, userNick, pending, onStatsUpdate);
+                        return;
+                    }
+                }
+                hsRenderFocusStart(appPage, layer, body, c, userNick, onStatsUpdate);
+            }
+            function hsRenderFocusStart(appPage, layer, body, c, userNick, onStatsUpdate) {
                 body.innerHTML = `
                     <div style="text-align:center;padding:20px 10px;">
                         <div style="font-size:11px;color:#B89B95;letter-spacing:2px;margin-bottom:14px;">CO-FOCUS</div>
@@ -8653,11 +8672,15 @@ DB.init();
                 });
                 body.querySelector('.hs-focus-start').onclick = () => {
                     const task = body.querySelector('#hs-focus-task').value.trim() || '一件重要的事';
-                    hsStartFocus(layer, body, c, userNick, mins, task, onStatsUpdate);
+                    hsStartFocus(appPage, layer, body, c, userNick, mins, task, onStatsUpdate);
                 };
             }
             
-            async function hsStartFocus(layer, body, c, userNick, mins, task, onStatsUpdate) {
+            // 续算专注：页面被切后台/锁屏/系统回收导致计时器丢失，但还没到时间，重新打开时接着倒计时
+            function hsResumeFocus(appPage, layer, body, c, userNick, pending, onStatsUpdate) {
+                hsStartFocus(appPage, layer, body, c, userNick, pending.mins, pending.task || '一件重要的事', onStatsUpdate, pending.startTime);
+            }
+            async function hsStartFocus(appPage, layer, body, c, userNick, mins, task, onStatsUpdate, resumeStartTime) {
                 // 进入专注模式
                 body.innerHTML = `
                     <div style="text-align:center;padding:10px 14px;">
@@ -8685,7 +8708,10 @@ DB.init();
                 let remain = total;
                 let companionTimer = null;
                 let mainTimer = null;
-                const startTime = Date.now();
+                const startTime = resumeStartTime || Date.now();
+                // 记下这场专注的起点，万一页面被切后台/锁屏/系统回收导致计时器丢失，
+                // 重新打开时能用真实时间戳补算，不会白白错过掉落
+                hsSet(c.id, 'focusActive', { startTime, mins, task });
                 const progEl = body.querySelector('#hs-focus-prog');
                 const timeEl = body.querySelector('#hs-focus-time');
                 const msgEl = body.querySelector('#hs-focus-msg');
@@ -8705,10 +8731,12 @@ DB.init();
                 companionTimer = setInterval(genCompanion, 5 * 60 * 1000); // 每 5 分钟刷新
                 
                 function tick() {
-                    remain--;
+                    // 用真实时间戳算剩余，而不是单纯递减 —— 后台标签页被节流时也不会计时不准
+                    remain = total - Math.floor((Date.now() - startTime) / 1000);
                     if (remain <= 0) {
                         clearInterval(mainTimer);
                         clearInterval(companionTimer);
+                        hsSet(c.id, 'focusActive', null);
                         hsFinishFocus(appPage, layer, body, c, userNick, mins, task, onStatsUpdate);
                         return;
                     }
@@ -8716,12 +8744,14 @@ DB.init();
                     timeEl.textContent = m + ':' + String(s).padStart(2,'0');
                     progEl.style.strokeDashoffset = (CIRC * (1 - remain / total)).toFixed(2);
                 }
+                tick();
                 mainTimer = setInterval(tick, 1000);
                 
                 body.querySelector('.hs-focus-stop').onclick = () => {
                     if (!confirm('提前结束这次专注？\n（已专注 ' + Math.floor((Date.now() - startTime) / 60000) + ' 分钟）')) return;
                     clearInterval(mainTimer);
                     clearInterval(companionTimer);
+                    hsSet(c.id, 'focusActive', null);
                     const actualMins = Math.max(1, Math.floor((Date.now() - startTime) / 60000));
                     // 只有专注满至少1分钟才计入
                     if (actualMins >= 1) {
