@@ -4738,7 +4738,7 @@ DB.init();
                                         // 【AI自主撤回】解析 AI 主动发出的撤回指令 [撤回：要说漏嘴又后悔的话]
                                         // AI 只在"说错话/害羞/后悔/不合时宜"时才用，不该频繁
                                         let aiRecallText = null;
-                                        const recallMatch = cleanedReply.match(/\[撤回[:：]\s*([^\]]+)\]/);
+                                        const recallMatch = cleanedReply.match(/\[撤回(?:消息)?[:：]\s*([^\]]+)\]/);
                                         if (recallMatch) {
                                             aiRecallText = recallMatch[1].trim();
                                             // 从正文里去掉这条指令，避免它被当成普通消息显示
@@ -4847,6 +4847,21 @@ DB.init();
                                             bubbles = bubbles.map(function(b){ return b.replace(/[，、]+$/, ''); });
                                             return mergeOpenQuotes(bubbles.filter(Boolean));
                                         }
+
+                                        // 【兜底清理】AI 偶尔会"照猫画虎"泛化出没教过的方括号标记（比如误把撤回写成
+                                        // [撤回消息：xxx]、或者莫名冒出 [消息]/[图片]/[语音] 这类系统占位符风格的词），
+                                        // 这些不是真实台词，绝不该原样显示给用户看到，统一清掉。
+                                        cleanedReply = cleanedReply
+                                            .replace(/[\[【]\s*(消息|图片|语音|通话|剧情)\s*[\]】]/g, '')
+                                            .split('\n').map(line => {
+                                                let t = line.trim();
+                                                // 去掉整行只是孤立的 ] 或 [ 或纯符号残留的情况
+                                                if (/^[\]\[】【]+$/.test(t)) return '';
+                                                // 去掉行首/行尾多出来的、没有配对的孤立括号
+                                                if (t.startsWith(']') && (t.match(/\[/g)||[]).length < (t.match(/\]/g)||[]).length) t = t.slice(1).trim();
+                                                return t;
+                                            }).filter(Boolean).join('\n')
+                                            .trim();
 
                                         const finalMessages = splitResponseWithSentenceMigration(cleanedReply);
                                         
