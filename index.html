@@ -4114,41 +4114,10 @@ DB.init();
                         });
 
                         let timer;
-                        box.querySelectorAll('.message-bubble').forEach(el => {
-                            const idx = el.dataset.idx;
-                            if (idx === undefined) return;
-                            const msg = history[idx];
-                            if (!msg) return;
-
-                            const startPress = (e) => { e.preventDefault(); timer = setTimeout(() => {
-                                navigator.vibrate(50);
-                                const qSender = msg.sender==='me'?(localStorage.getItem('user_nick')||'我'):(c.notes||c.name||'对方');
-                                let qText = msg.text||'[消息]';
-                                if(msg.type==='image'||msg.type==='photo') qText='[图片]';
-                                if(msg.type==='sticker') qText='[表情]';
-                                if(msg.type==='voice') qText=msg.duration+'"';
-                                currentQuote = {sender:qSender, text:qText};
-                                quotePreview.style.display = 'block';
-                                p.querySelector('#quote-text-content').textContent = qSender+': '+qText.substring(0,15);
-                                el.classList.add('quoting');
-                            }, 500); };
-                            const endPress = () => clearTimeout(timer);
-                            el.addEventListener('mousedown', startPress);
-                            el.addEventListener('touchstart', startPress);
-                            el.addEventListener('mouseup', endPress);
-                            el.addEventListener('touchend', endPress);
-                            el.addEventListener('mouseleave', endPress);
-
-                            if (msg.type === 'voice') {
-                                el.onclick = () => {
-                                    const wrapper = el.closest('.message-bubble-wrapper');
-                                    if (wrapper) {
-                                        const tray = wrapper.querySelector('.voice-content-tray');
-                                        if (tray) tray.classList.toggle('open');
-                                    }
-                                };
-                            }
-                        });
+                        // 说明：气泡的长按菜单（引用/复制/多选/删除…）和语音展开，
+                        // 已经在上面统一走 showCtxMenu / 全局唯一开关处理，这里不再重复绑定。
+                        // （之前这里残留过一段旧的 touchstart+preventDefault 代码，会导致 iOS 上
+                        // 只要触摸落在气泡上——尤其是铺满屏幕的线下剧情文大气泡——就整段无法滚动，已彻底移除）
                     };
                     // 用 rAF 节流：连续多次调用 render() 在同一帧只执行一次，避免手机上闪烁
                     const render = () => {
