@@ -8635,10 +8635,17 @@ DB.init();
                             <input id="hs-focus-task" type="text" placeholder="写报告 / 看书 / 学习…" style="width:100%;padding:10px 12px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#FFFCFA;box-sizing:border-box;outline:none;margin-bottom:14px;">
                             <div style="font-size:12px;color:#9A7872;margin-bottom:10px;">专注多长时间？</div>
                             <div id="hs-focus-min-list" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                                <span class="hs-fm" data-min="5">5 分</span>
+                                <span class="hs-fm" data-min="10">10 分</span>
                                 <span class="hs-fm" data-min="15">15 分</span>
                                 <span class="hs-fm hs-fm-sel" data-min="25">25 分</span>
                                 <span class="hs-fm" data-min="45">45 分</span>
                                 <span class="hs-fm" data-min="60">60 分</span>
+                                <span class="hs-fm" data-min="custom" id="hs-fm-custom">自定义</span>
+                            </div>
+                            <div id="hs-fm-custom-box" style="display:none;margin-top:12px;align-items:center;justify-content:center;gap:8px;">
+                                <input id="hs-fm-custom-input" type="number" min="1" max="600" placeholder="想专注多少分钟？" style="width:150px;padding:8px 12px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#FFFCFA;box-sizing:border-box;outline:none;text-align:center;">
+                                <span style="font-size:12px;color:#9A7872;">分钟</span>
                             </div>
                         </div>
                         <span class="hs-focus-start" style="display:inline-block;background:#FFD3D4;color:#775C56;padding:10px 36px;border-radius:16px;font-size:14px;cursor:pointer;font-weight:500;">开始专注 🍅</span>
@@ -8652,14 +8659,29 @@ DB.init();
                     </style>
                 `;
                 let mins = 25;
+                const customBox = body.querySelector('#hs-fm-custom-box');
+                const customInput = body.querySelector('#hs-fm-custom-input');
                 const _dexLink = body.querySelector('.hs-focus-dex');
                 if (_dexLink) _dexLink.onclick = () => hsOpenFoodDex(appPage, c);
                 body.querySelectorAll('.hs-fm').forEach(el => el.onclick = () => {
                     body.querySelectorAll('.hs-fm').forEach(x => x.classList.remove('hs-fm-sel'));
                     el.classList.add('hs-fm-sel');
-                    mins = parseInt(el.dataset.min);
+                    if (el.dataset.min === 'custom') {
+                        customBox.style.display = 'flex';
+                        customInput.focus();
+                        const v = parseInt(customInput.value);
+                        if (v > 0) mins = Math.min(600, v);
+                    } else {
+                        customBox.style.display = 'none';
+                        mins = parseInt(el.dataset.min);
+                    }
+                });
+                customInput.addEventListener('input', () => {
+                    const v = parseInt(customInput.value);
+                    if (v > 0) mins = Math.min(600, v);
                 });
                 body.querySelector('.hs-focus-start').onclick = () => {
+                    if (!(mins > 0)) { alert('先填一下想专注多少分钟吧～'); customInput.focus(); return; }
                     const task = body.querySelector('#hs-focus-task').value.trim() || '一件重要的事';
                     hsStartFocus(appPage, layer, body, c, userNick, mins, task, onStatsUpdate);
                 };
