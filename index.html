@@ -10832,7 +10832,22 @@ DB.init();
                                         images = arr.map(r => ({ id: r.id, data: r.data }));
                                     }
                                 } catch(e) {}
-                                const backup = { app: '眠尔机', version: 1, exportedAt: new Date().toISOString(), localStorage: ls, images: images };
+                                // 3) 联系人 + 聊天记录 + 朋友圈 + 共读记录 + 我的资料（存在独立的 IndexedDB「MTeaDB」里，
+                                //    不在 localStorage 中，之前的备份漏掉了这一整块，现在补上——这才是最重要的数据）
+                                let mteaDB = null;
+                                try {
+                                    if (typeof DB !== 'undefined') {
+                                        if (DB.flush) await DB.flush();
+                                        mteaDB = {
+                                            contacts: DB.getContacts ? DB.getContacts() : [],
+                                            chats: DB.getChats ? DB.getChats() : {},
+                                            moments: DB.getMoments ? DB.getMoments() : [],
+                                            coreads: DB.getCoReads ? DB.getCoReads() : {},
+                                            me: DB.getMe ? DB.getMe() : null
+                                        };
+                                    }
+                                } catch(e) {}
+                                const backup = { app: '眠尔机', version: 2, exportedAt: new Date().toISOString(), localStorage: ls, images: images, mteaDB: mteaDB };
                                 const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
@@ -10841,7 +10856,9 @@ DB.init();
                                 a.download = `眠尔机备份_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.json`;
                                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                                 setTimeout(() => URL.revokeObjectURL(url), 4000);
-                                alert('备份好啦～文件已开始下载，请把这个 .json 文件妥善保存好。\n（包含所有 app 数据 + 壁纸 + 自定义图标，共 ' + images.length + ' 张图）');
+                                const chatCount = mteaDB ? Object.keys(mteaDB.chats||{}).length : 0;
+                                const contactCount = mteaDB ? (mteaDB.contacts||[]).length : 0;
+                                alert('备份好啦～文件已开始下载，请把这个 .json 文件妥善保存好。\n（含 ' + contactCount + ' 位联系人、' + chatCount + ' 份聊天记录、' + images.length + ' 张图，以及所有 app 数据）');
                             } catch(err) {
                                 alert('备份失败：' + (err && err.message || err));
                             } finally {
@@ -10870,6 +10887,17 @@ DB.init();
                                         for (const img of backup.images) {
                                             if (img && img.id) { try { await window.ImageDB.save(img.id, img.data); } catch(e) {} }
                                         }
+                                    }
+                                    // 3) 还原联系人 + 聊天记录 + 朋友圈 + 共读记录 + 我的资料
+                                    if (backup.mteaDB && typeof DB !== 'undefined') {
+                                        try {
+                                            if (DB.saveContacts) DB.saveContacts(backup.mteaDB.contacts || []);
+                                            if (DB.saveChats) DB.saveChats(backup.mteaDB.chats || {});
+                                            if (DB.saveMoments) DB.saveMoments(backup.mteaDB.moments || []);
+                                            if (DB.saveCoReads) DB.saveCoReads(backup.mteaDB.coreads || {});
+                                            if (DB.saveMe && backup.mteaDB.me) DB.saveMe(backup.mteaDB.me);
+                                            if (DB.flush) await DB.flush();
+                                        } catch(e) {}
                                     }
                                     alert('导入成功啦～马上刷新一下，你的小世界就回来了 💗');
                                     location.reload();
