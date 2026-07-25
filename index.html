@@ -71,7 +71,8 @@
         .page-dot.active { background: rgba(255,255,255,0.95); transform: scale(1.1); }
         body.brown-font .page-dot { background: rgba(119,92,86,0.25); }
         body.brown-font .page-dot.active { background: rgba(119,92,86,0.85); }
-        .app-icon { display: flex; flex-direction: column; align-items: center; text-align: center; color: white; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s; flex-shrink: 0; width: 60px; gap: 4px; }
+        .app-icon { display: flex; flex-direction: column; align-items: center; text-align: center; color: white; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s; flex-shrink: 0; width: 60px; gap: 4px; -webkit-touch-callout: none; -webkit-user-drag: none; }
+        .app-icon img { -webkit-touch-callout: none; -webkit-user-drag: none; pointer-events: none; }
         /* 棕色字体模式：覆盖白色文字 */
         body.brown-font .app-icon { color: #775C56 !important; text-shadow: 0 1px 2px rgba(255,255,255,0.3) !important; }
         body.brown-font .love-widget { color: #775C56 !important; text-shadow: 0 1px 2px rgba(255,255,255,0.3) !important; }
@@ -11008,7 +11009,7 @@ DB.init();
                     // 避免手机点图标那一下穿透到刚渲染出的新内容里误触按钮（如误点拍一拍/收藏/恢复主题）
                     (function(){
                         const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); document.removeEventListener('click', eat, true); clearTimeout(_gt); };
-                        const _gt = setTimeout(() => document.removeEventListener('click', eat, true), 350);
+                        const _gt = setTimeout(() => document.removeEventListener('click', eat, true), 500);
                         document.addEventListener('click', eat, true);
                     })();
                 }
