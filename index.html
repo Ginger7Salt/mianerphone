@@ -3704,21 +3704,12 @@ DB.init();
                         });
                         
 
-                        // Re-bind long press on every render (DOM is replaced each time)
-                        box.querySelectorAll('.message-bubble[data-idx]').forEach(bbl => {
-                            bbl.addEventListener('contextmenu', (e) => {
-                                e.preventDefault();
-                                if(selectMode){const i=parseInt(bbl.dataset.idx);if(selectedIdxs.has(i))selectedIdxs.delete(i);else selectedIdxs.add(i);selectCount.textContent=`已选${selectedIdxs.size}条`;render();}
-                                else showCtxMenu(e.clientX,e.clientY,parseInt(bbl.dataset.idx));
-                            });
-                            let tt;
-                            bbl.addEventListener('touchstart',(e)=>{const t=e.touches[0];tt=setTimeout(()=>showCtxMenu(t.clientX,t.clientY,parseInt(bbl.dataset.idx)),600);},{passive:true});
-                            bbl.addEventListener('touchend',()=>clearTimeout(tt));
-                            bbl.addEventListener('touchmove',()=>clearTimeout(tt));
-                        });
+                        // （原本这里有一段"每次渲染都重新绑长按"的重复代码，跟下面那套完整版
+                        // 功能一模一样，是冗余的旧代码，而且两套一起跑会让监听器叠得更快，已删除）
                         // 多选模式：点勾选圆圈、或点整条消息都能勾选
                         if (selectMode) {
                             box.querySelectorAll('.msg-checkbox[data-selidx]').forEach(cb => {
+                                if (cb._selBound) return; cb._selBound = true;
                                 cb.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     const i = parseInt(cb.dataset.selidx);
@@ -3728,6 +3719,7 @@ DB.init();
                                 });
                             });
                             box.querySelectorAll('.message.select-mode .message-bubble[data-idx]').forEach(bbl => {
+                                if (bbl._selBound) return; bbl._selBound = true;
                                 bbl.addEventListener('click', (e) => {
                                     e.preventDefault(); e.stopPropagation();
                                     const i = parseInt(bbl.dataset.idx);
@@ -3742,6 +3734,7 @@ DB.init();
 
                         // 파일/음악 카드 클릭 팝업
                         box.querySelectorAll('.file-card[data-fidx], .music-card[data-midx]').forEach(card => {
+                            if (card._fmBound) return; card._fmBound = true;
                             const isMusic = card.classList.contains('music-card');
                             const getIdx = () => parseInt(isMusic ? card.dataset.midx : card.dataset.fidx);
                             card.addEventListener('contextmenu',(e)=>{e.preventDefault();const i=getIdx();if(i<0)return;if(selectMode){if(selectedIdxs.has(i))selectedIdxs.delete(i);else selectedIdxs.add(i);selectCount.textContent=`已选${selectedIdxs.size}条`;render();}else showCtxMenu(e.clientX,e.clientY,i);});
@@ -3870,6 +3863,7 @@ DB.init();
                             ...box.querySelectorAll('.gift-card[data-gidx]'),
                         ];
                         box.querySelectorAll('.message-bubble[data-idx]').forEach(bubble => {
+                            if (bubble._ctxBound) return; bubble._ctxBound = true;
                             // Desktop: right-click shows context menu
                             bubble.addEventListener('contextmenu', (e) => {
                                 e.preventDefault();
@@ -3932,6 +3926,7 @@ DB.init();
 
                         // AI撤回消息长按查看（不再是单击）
                         box.querySelectorAll('.revoked-clickable, .revoked-peeked').forEach(el => {
+                            if (el._revokedBound) return; el._revokedBound = true;
                             const toggle = (e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
@@ -3962,6 +3957,7 @@ DB.init();
                             const msg = history[tidx];
                             // 只有AI发来的转账才能点击接收/退还
                             if(!msg || msg.sender === 'me' || msg.claimed || msg.status==='returned') return;
+                            if (card._transferBound) return; card._transferBound = true;
                             card.style.cursor = 'pointer';
                             // 【转账卡接收逻辑】抽成函数，桌面端 click 和手机端轻点触摸都共用
                             const openDlg = () => {
@@ -4028,6 +4024,7 @@ DB.init();
                             const gmsg = history[gidx];
                             // 只有AI发来的礼物才能点击接收/退还
                             if(!gmsg || gmsg.sender === 'me' || gmsg.claimed || gmsg.status==='returned') return;
+                            if (card._giftBound) return; card._giftBound = true;
                             card.style.cursor = 'pointer';
                             // 【礼物卡接收逻辑】抽成函数，桌面 click 和手机轻点触摸都共用
                             const openGiftDlg = () => {
@@ -4086,6 +4083,7 @@ DB.init();
 
                         // Click on select-row to toggle
                         box.querySelectorAll('.select-row[data-sidx]').forEach(row => {
+                            if (row._selRowBound) return; row._selRowBound = true;
                             row.addEventListener('click', (e) => {
                                 const idx = parseInt(row.dataset.sidx);
                                 if(selectedIdxs.has(idx)) selectedIdxs.delete(idx);
