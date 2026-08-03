@@ -9284,6 +9284,83 @@ DB.init();
             }
 
             // 工具：经期预测——基于上次开始日和周期长度，推算下次经期、排卵日（均为估算，仅供参考）
+            // 工具：生成月经日历（某年某月），标出「实际记录的经期」「预测的未来经期」「预测排卵日」「今天」
+            function hsBuildPeriodCalendarHTML(period, viewYear, viewMonth) {
+                const todayStr = new Date().toISOString().slice(0,10);
+                const history = (period && period.history) || [];
+                const cycleLen = (period && period.cycleLen) || 28;
+                const periodLen = (period && period.periodLen) || 5;
+
+                // 1) 实际记录过的经期日子（每条历史记录的 start~end，未结束的按 periodLen 估算）
+                const actualDays = new Set();
+                history.forEach(h => {
+                    const s = new Date(h.start); s.setHours(0,0,0,0);
+                    const e = h.end ? new Date(h.end) : new Date(s.getTime() + (periodLen-1)*86400000);
+                    e.setHours(0,0,0,0);
+                    for (let d = new Date(s); d <= e; d = new Date(d.getTime()+86400000)) {
+                        actualDays.add(d.toISOString().slice(0,10));
+                    }
+                });
+                // 2) 预测的未来经期日子 + 排卵日（从最近一次开始日往后推算，推到能覆盖当前查看月份为止）
+                const predictedDays = new Set();
+                const ovuDays = new Set();
+                if (period && period.lastStart) {
+                    let cursor = new Date(period.lastStart); cursor.setHours(0,0,0,0);
+                    const viewMonthEnd = new Date(viewYear, viewMonth+1, 0);
+                    let guard = 0;
+                    while (cursor < viewMonthEnd && guard < 60) {
+                        cursor = new Date(cursor.getTime() + cycleLen*86400000);
+                        guard++;
+                        const s = cursor, e = new Date(cursor.getTime() + (periodLen-1)*86400000);
+                        for (let d = new Date(s); d <= e; d = new Date(d.getTime()+86400000)) {
+                            const key = d.toISOString().slice(0,10);
+                            if (!actualDays.has(key)) predictedDays.add(key);
+                        }
+                        const ovu = new Date(cursor.getTime() - 14*86400000);
+                        ovuDays.add(ovu.toISOString().slice(0,10));
+                    }
+                }
+
+                const firstDay = new Date(viewYear, viewMonth, 1);
+                const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+                const startWeekday = firstDay.getDay(); // 0=周日
+                const weekLabels = ['日','一','二','三','四','五','六'];
+                let cells = '';
+                for (let i = 0; i < startWeekday; i++) cells += '<div></div>';
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateObj = new Date(viewYear, viewMonth, d);
+                    const key = dateObj.toISOString().slice(0,10);
+                    const isToday = key === todayStr;
+                    const isActual = actualDays.has(key);
+                    const isPred = predictedDays.has(key);
+                    const isOvu = ovuDays.has(key);
+                    let bg = 'transparent', color = '#775C56', border = 'none';
+                    if (isActual) { bg = '#F3A6A6'; color = '#fff'; }
+                    else if (isPred) { bg = 'transparent'; color = '#E89B9B'; border = '1.5px dashed #F3C4C4'; }
+                    if (isToday) border = '1.5px solid #775C56';
+                    cells += `<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:${bg};color:${color};border:${border};font-size:11px;font-weight:${isToday||isActual?'700':'400'};position:relative;box-sizing:border-box;">
+                        ${d}${isOvu ? '<span style="position:absolute;bottom:1px;width:3px;height:3px;border-radius:50%;background:#C98AB5;"></span>' : ''}
+                    </div>`;
+                }
+                const monthLabel = viewYear + '年' + (viewMonth+1) + '月';
+                return `<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:14px;border:1px solid #f0e0dc;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <span class="hs-period-cal-prev" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#B89B95;cursor:pointer;font-size:14px;">‹</span>
+                        <span style="font-size:12px;color:#775C56;font-weight:600;">${monthLabel}</span>
+                        <span class="hs-period-cal-next" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#B89B95;cursor:pointer;font-size:14px;">›</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0;margin-bottom:4px;">
+                        ${weekLabels.map(w => `<div style="text-align:center;font-size:10px;color:#C9BDB6;">${w}</div>`).join('')}
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px 0;">${cells}</div>
+                    <div style="display:flex;gap:12px;justify-content:center;margin-top:10px;font-size:10px;color:#B89B95;">
+                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#F3A6A6;margin-right:3px;"></span>已记录</span>
+                        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1.5px dashed #F3C4C4;margin-right:3px;"></span>预测经期</span>
+                        <span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#C98AB5;margin-right:4px;"></span>预测排卵</span>
+                    </div>
+                </div>`;
+            }
+
             function hsGetPeriodPrediction(period) {
                 if (!period || !period.lastStart) return null;
                 const cycleLen = period.cycleLen || 28;
@@ -9496,6 +9573,8 @@ DB.init();
             function hsOpenPeriod(appPage, c, userNick) {
                 const layer = hsOpenLayer(appPage, '月经记录', '');
                 const body = layer.querySelector('.hs-layer-body');
+                const _today0 = new Date();
+                let calViewYear = _today0.getFullYear(), calViewMonth = _today0.getMonth();
                 
                 const render = () => {
                     const period = hsGet(c.id, 'periodData', null);
@@ -9505,6 +9584,7 @@ DB.init();
                     const history = (period && period.history) || [];
                     
                     body.innerHTML = `
+                        ${hsBuildPeriodCalendarHTML(period, calViewYear, calViewMonth)}
                         <div style="background:linear-gradient(135deg,#FFE5E5,#FFF);border-radius:16px;padding:20px;margin-bottom:14px;text-align:center;">
                             <div style="font-size:11px;color:#B89B95;letter-spacing:2px;margin-bottom:8px;">CURRENT</div>
                             <div style="font-size:24px;color:#E89B9B;font-weight:600;margin-bottom:6px;">${info.statusShort}</div>
@@ -9531,9 +9611,12 @@ DB.init();
                         </div>`;
                         })()}
                         
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                             ${!inPeriod ? `<span id="hs-period-start" style="padding:12px;background:#FFD3D4;color:#775C56;border-radius:12px;font-size:13px;cursor:pointer;text-align:center;font-weight:500;">🌸 今天来了</span>` : `<span id="hs-period-end" style="padding:12px;background:#D5EBE4;color:#775C56;border-radius:12px;font-size:13px;cursor:pointer;text-align:center;font-weight:500;">🌿 今天结束</span>`}
                             <span id="hs-period-symptom" style="padding:12px;background:#fff;color:#775C56;border-radius:12px;font-size:13px;cursor:pointer;text-align:center;font-weight:500;border:1px solid #f0e0dc;">💗 记录症状</span>
+                        </div>
+                        <div style="text-align:center;margin-bottom:14px;">
+                            <span id="hs-period-backdate" style="font-size:11.5px;color:#B89B95;cursor:pointer;border-bottom:1px dashed #D8C9C2;padding-bottom:1px;">📅 忘记及时记了？补记别的日期</span>
                         </div>
                         
                         <div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid #f0e0dc;">
@@ -9564,18 +9647,24 @@ DB.init();
                     
                     if (history.length > 0) {
                         const histEl = body.querySelector('#hs-period-history');
-                        history.slice(0, 10).forEach(h => {
+                        history.slice(0, 10).forEach((h, hIdx) => {
                             const d = new Date(h.start);
                             const dateStr = (d.getMonth()+1) + '月' + d.getDate() + '日';
                             const dur = h.end ? Math.round((new Date(h.end) - d) / 86400000) + 1 : null;
                             const card = document.createElement('div');
-                            card.style.cssText = 'background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #f0e0dc;display:flex;justify-content:space-between;align-items:center;';
-                            card.innerHTML = `<div style="font-size:12px;color:#775C56;">${dateStr} 开始${dur ? ` · ${dur} 天` : ' · 未记结束'}</div>${h.symptoms && h.symptoms.length ? `<div style="font-size:11px;color:#9A7872;">${h.symptoms.join('、')}</div>` : ''}`;
+                            card.dataset.hidx = hIdx;
+                            card.style.cssText = 'background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #f0e0dc;display:flex;justify-content:space-between;align-items:center;cursor:pointer;';
+                            card.innerHTML = `<div style="font-size:12px;color:#775C56;">${dateStr} 开始${dur ? ` · ${dur} 天` : ' · 未记结束'}</div><div style="display:flex;align-items:center;gap:8px;">${h.symptoms && h.symptoms.length ? `<div style="font-size:11px;color:#9A7872;">${h.symptoms.join('、')}</div>` : ''}<div style="font-size:10px;color:#C9BDB6;">✎ 改日期</div></div>`;
+                            card.onclick = () => hsOpenPeriodEditDates(appPage, c, hIdx, render);
                             histEl.appendChild(card);
                         });
                     }
                     
                     // 绑定事件
+                    const calPrev = body.querySelector('.hs-period-cal-prev');
+                    if (calPrev) calPrev.onclick = () => { calViewMonth--; if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; } render(); };
+                    const calNext = body.querySelector('.hs-period-cal-next');
+                    if (calNext) calNext.onclick = () => { calViewMonth++; if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; } render(); };
                     const startBtn = body.querySelector('#hs-period-start');
                     if (startBtn) startBtn.onclick = async () => {
                         if (!confirm('记录今天来月经？TA 会知道的')) return;
@@ -9636,6 +9725,8 @@ DB.init();
                     };
                     
                     body.querySelector('#hs-period-symptom').onclick = () => hsOpenSymptom(appPage, c, userNick, render);
+                    const backdateBtn = body.querySelector('#hs-period-backdate');
+                    if (backdateBtn) backdateBtn.onclick = () => hsOpenPeriodBackdate(appPage, c, render);
                     
                     body.querySelector('.hs-period-cycle-minus').onclick = () => {
                         const period = hsGet(c.id, 'periodData', {});
@@ -9659,6 +9750,119 @@ DB.init();
                     };
                 };
                 render();
+            }
+
+            // 补记别的日期：忘记在当天记录时，可以选一个过去的日期补记开始/结束
+            function hsOpenPeriodBackdate(appPage, c, onDone) {
+                const period = hsGet(c.id, 'periodData', { history: [] });
+                const inPeriod = period.inPeriod;
+                const todayStr = new Date().toISOString().slice(0,10);
+                const dlg = document.createElement('div');
+                dlg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:30px;';
+                dlg.innerHTML = `<div style="background:#FBF9F4;border-radius:14px;padding:18px;max-width:280px;width:100%;">
+                    <div style="font-size:14px;color:#775C56;font-weight:600;text-align:center;margin-bottom:4px;">补记日期</div>
+                    <div style="font-size:11px;color:#9A7872;text-align:center;margin-bottom:14px;">不是今天来的/结束的？选实际那天就好</div>
+                    <div style="display:flex;gap:8px;margin-bottom:${inPeriod ? '14px' : '4px'};">
+                        <span class="hs-bd-type" data-type="start" style="flex:1;text-align:center;padding:9px 0;border-radius:10px;font-size:12px;cursor:pointer;background:#FFD3D4;color:#775C56;box-sizing:border-box;">🌸 补记开始</span>
+                        <span class="hs-bd-type" data-type="end" style="flex:1;text-align:center;padding:9px 0;border-radius:10px;font-size:12px;cursor:pointer;background:#fff;color:#9A7872;border:1px solid #f0e0dc;box-sizing:border-box;${inPeriod ? '' : 'opacity:0.4;pointer-events:none;'}">🌿 补记结束</span>
+                    </div>
+                    ${inPeriod ? '' : '<div style="font-size:10px;color:#C9BDB6;text-align:center;margin-bottom:14px;">（当前没有进行中的记录，补记不了结束日期）</div>'}
+                    <input id="hs-bd-date" type="date" max="${todayStr}" value="${todayStr}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:14px;">
+                    <div style="display:flex;gap:8px;justify-content:center;">
+                        <span class="hs-bd-cancel" style="background:#fff;color:#9A7872;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #f0e0dc;">取消</span>
+                        <span class="hs-bd-ok" style="background:#FFD3D4;color:#775C56;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;">保存</span>
+                    </div>
+                </div>`;
+                appPage.appendChild(dlg);
+                let type = 'start';
+                dlg.querySelectorAll('.hs-bd-type').forEach(el => {
+                    el.onclick = () => {
+                        if (el.dataset.type === 'end' && !inPeriod) return;
+                        type = el.dataset.type;
+                        dlg.querySelectorAll('.hs-bd-type').forEach(x => { x.style.background = '#fff'; x.style.color = '#9A7872'; x.style.border = '1px solid #f0e0dc'; });
+                        el.style.background = '#FFD3D4'; el.style.color = '#775C56'; el.style.border = 'none';
+                    };
+                });
+                dlg.querySelector('.hs-bd-cancel').onclick = () => dlg.remove();
+                dlg.querySelector('.hs-bd-ok').onclick = () => {
+                    const dateVal = dlg.querySelector('#hs-bd-date').value;
+                    if (!dateVal) { alert('先选个日期呀～'); return; }
+                    const p = hsGet(c.id, 'periodData', { history: [] });
+                    p.history = p.history || [];
+                    if (type === 'start') {
+                        p.history.unshift({ start: dateVal, end: null, symptoms: [] });
+                        if (p.history.length > 24) p.history.length = 24;
+                        if (p.history.length >= 2) {
+                            const last = new Date(p.history[1].start);
+                            const cur = new Date(dateVal);
+                            const days = Math.round((cur - last) / 86400000);
+                            if (days >= 21 && days <= 45) p.cycleLen = days;
+                        }
+                        p.lastStart = dateVal;
+                        p.inPeriod = true;
+                    } else {
+                        if (p.history[0]) {
+                            p.history[0].end = dateVal;
+                            const realLen = Math.round((new Date(dateVal) - new Date(p.history[0].start)) / 86400000) + 1;
+                            if (realLen >= 1 && realLen <= 12) p.periodLen = realLen;
+                        }
+                        p.inPeriod = false;
+                    }
+                    hsSet(c.id, 'periodData', p);
+                    dlg.remove();
+                    if (onDone) onDone();
+                };
+                dlg.onclick = e => { if (e.target === dlg) dlg.remove(); };
+            }
+
+            // 修改某一条历史记录的开始/结束日期（点历史卡片进来），也能整条删除
+            function hsOpenPeriodEditDates(appPage, c, hIdx, onDone) {
+                const period = hsGet(c.id, 'periodData', { history: [] });
+                const h = (period.history || [])[hIdx];
+                if (!h) return;
+                const todayStr = new Date().toISOString().slice(0,10);
+                const dlg = document.createElement('div');
+                dlg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:30px;';
+                dlg.innerHTML = `<div style="background:#FBF9F4;border-radius:14px;padding:18px;max-width:280px;width:100%;">
+                    <div style="font-size:14px;color:#775C56;font-weight:600;text-align:center;margin-bottom:14px;">修改这条记录</div>
+                    <div style="font-size:11px;color:#9A7872;margin-bottom:4px;">开始日期</div>
+                    <input id="hs-ed-start" type="date" max="${todayStr}" value="${h.start}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:10px;">
+                    <div style="font-size:11px;color:#9A7872;margin-bottom:4px;">结束日期（还没结束就留空）</div>
+                    <input id="hs-ed-end" type="date" max="${todayStr}" value="${h.end || ''}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:16px;">
+                    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
+                        <span class="hs-ed-cancel" style="background:#fff;color:#9A7872;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #f0e0dc;">取消</span>
+                        <span class="hs-ed-save" style="background:#FFD3D4;color:#775C56;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;">保存</span>
+                    </div>
+                    <div style="text-align:center;"><span class="hs-ed-del" style="font-size:11px;color:#C98A8A;cursor:pointer;">删除这条记录</span></div>
+                </div>`;
+                appPage.appendChild(dlg);
+                dlg.querySelector('.hs-ed-cancel').onclick = () => dlg.remove();
+                dlg.querySelector('.hs-ed-save').onclick = () => {
+                    const s = dlg.querySelector('#hs-ed-start').value;
+                    const e = dlg.querySelector('#hs-ed-end').value;
+                    if (!s) { alert('开始日期不能空着呀～'); return; }
+                    if (e && new Date(e) < new Date(s)) { alert('结束日期不能比开始还早哦'); return; }
+                    const p = hsGet(c.id, 'periodData', { history: [] });
+                    p.history[hIdx].start = s;
+                    p.history[hIdx].end = e || null;
+                    if (hIdx === 0) { p.lastStart = s; p.inPeriod = !e; }
+                    hsSet(c.id, 'periodData', p);
+                    dlg.remove();
+                    if (onDone) onDone();
+                };
+                dlg.querySelector('.hs-ed-del').onclick = () => {
+                    if (!confirm('删除这条记录？删了就找不回来了')) return;
+                    const p = hsGet(c.id, 'periodData', { history: [] });
+                    p.history.splice(hIdx, 1);
+                    if (hIdx === 0) {
+                        p.lastStart = p.history[0] ? p.history[0].start : null;
+                        p.inPeriod = p.history[0] ? !p.history[0].end : false;
+                    }
+                    hsSet(c.id, 'periodData', p);
+                    dlg.remove();
+                    if (onDone) onDone();
+                };
+                dlg.onclick = e => { if (e.target === dlg) dlg.remove(); };
             }
 
             // ====== 心情记录本 ======
@@ -9869,16 +10073,23 @@ DB.init();
                 const period = hsGet(c.id, 'periodData', null);
                 const cur = (period && period.history && period.history[0]) || null;
                 const existingSymptoms = (cur && cur.symptoms) || [];
-                const allSymptoms = ['痛经', '腰酸', '头疼', '乏力', '情绪低', '胸胀', '想吃甜', '失眠', '想被抱抱'];
+                const customSymptoms = hsGet(c.id, 'customSymptoms', []);
+                const baseSymptoms = ['痛经', '腰酸', '头疼', '乏力', '情绪低', '胸胀', '想吃甜', '失眠', '想被抱抱'];
+                const allSymptoms = baseSymptoms.concat(customSymptoms.filter(s => !baseSymptoms.includes(s)));
                 
                 const dlg = document.createElement('div');
                 dlg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:30px;';
                 dlg.innerHTML = `<div style="background:#FBF9F4;border-radius:14px;padding:16px;max-width:280px;width:100%;">
                     <div style="font-size:14px;color:#775C56;font-weight:600;text-align:center;margin-bottom:14px;">今天身体怎么样？</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+                    <div id="hs-sym-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
                         ${allSymptoms.map(s => `<span class="hs-sym" data-name="${s}" style="padding:6px 12px;background:${existingSymptoms.includes(s) ? '#FFD3D4' : '#fff'};color:#775C56;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid ${existingSymptoms.includes(s) ? '#FFD3D4' : '#f0e0dc'};">${s}</span>`).join('')}
+                        <span id="hs-sym-add" style="padding:6px 12px;background:#fff;color:#B89B95;border-radius:14px;font-size:12px;cursor:pointer;border:1px dashed #D8C9C2;">+ 自定义</span>
                     </div>
-                    <div style="display:flex;gap:8px;justify-content:center;">
+                    <div id="hs-sym-add-box" style="display:none;gap:6px;margin-bottom:10px;">
+                        <input id="hs-sym-add-input" type="text" maxlength="8" placeholder="比如：恶心、腹泻…" style="flex:1;padding:7px 10px;border:1px solid #f0e0dc;border-radius:10px;font-size:12px;color:#775C56;background:#fff;box-sizing:border-box;outline:none;">
+                        <span id="hs-sym-add-ok" style="background:#FFD3D4;color:#775C56;padding:7px 14px;border-radius:10px;font-size:12px;cursor:pointer;white-space:nowrap;">添加</span>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:center;margin-top:4px;">
                         <span class="hs-sym-cancel" style="background:#fff;color:#9A7872;padding:6px 20px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #f0e0dc;">取消</span>
                         <span class="hs-sym-ok" style="background:#FFD3D4;color:#775C56;padding:6px 20px;border-radius:12px;font-size:12px;cursor:pointer;">告诉 TA</span>
                     </div>
@@ -9886,13 +10097,42 @@ DB.init();
                 appPage.appendChild(dlg);
                 
                 const picked = new Set(existingSymptoms);
-                dlg.querySelectorAll('.hs-sym').forEach(el => {
+                const bindSymChip = (el) => {
                     el.onclick = () => {
                         const name = el.dataset.name;
                         if (picked.has(name)) { picked.delete(name); el.style.background = '#fff'; el.style.borderColor = '#f0e0dc'; }
                         else { picked.add(name); el.style.background = '#FFD3D4'; el.style.borderColor = '#FFD3D4'; }
                     };
-                });
+                };
+                dlg.querySelectorAll('.hs-sym').forEach(bindSymChip);
+                const addBtn = dlg.querySelector('#hs-sym-add');
+                const addBox = dlg.querySelector('#hs-sym-add-box');
+                const addInput = dlg.querySelector('#hs-sym-add-input');
+                addBtn.onclick = () => { addBtn.style.display = 'none'; addBox.style.display = 'flex'; addInput.focus(); };
+                const doAddCustom = () => {
+                    const name = addInput.value.trim().slice(0, 8);
+                    if (!name) return;
+                    const listEl = dlg.querySelector('#hs-sym-list');
+                    // 已经有同名标签的话，就直接选中它，不重复加
+                    const existed = Array.from(listEl.querySelectorAll('.hs-sym')).find(x => x.dataset.name === name);
+                    if (existed) { picked.add(name); existed.style.background = '#FFD3D4'; existed.style.borderColor = '#FFD3D4'; }
+                    else {
+                        const chip = document.createElement('span');
+                        chip.className = 'hs-sym'; chip.dataset.name = name;
+                        chip.style.cssText = 'padding:6px 12px;background:#FFD3D4;color:#775C56;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid #FFD3D4;';
+                        chip.textContent = name;
+                        listEl.insertBefore(chip, addBtn);
+                        bindSymChip(chip);
+                        picked.add(name);
+                        // 存成这位 TA 专属的自定义症状库，下次记录直接就能看到
+                        const cs = hsGet(c.id, 'customSymptoms', []);
+                        if (!cs.includes(name)) { cs.push(name); hsSet(c.id, 'customSymptoms', cs); }
+                    }
+                    addInput.value = '';
+                    addBox.style.display = 'none'; addBtn.style.display = 'inline-block';
+                };
+                dlg.querySelector('#hs-sym-add-ok').onclick = doAddCustom;
+                addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAddCustom(); });
                 dlg.querySelector('.hs-sym-cancel').onclick = () => dlg.remove();
                 dlg.querySelector('.hs-sym-ok').onclick = async () => {
                     const syms = Array.from(picked);
