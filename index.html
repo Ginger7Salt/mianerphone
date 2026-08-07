@@ -9255,11 +9255,26 @@ DB.init();
             }
             
             // 工具：计算月经状态简要
+            // ===== 日期安全处理：月经模块存的都是 "YYYY-MM-DD" 纯日期字符串，
+            // 不能直接 new Date(str)（会被当成 UTC 零点解析，部分时区会整体错一天），
+            // 也不能用 Date对象.toISOString().slice(0,10) 转回字符串（同样的坑反过来，UTC+8 这类正偏移时区会错）。
+            // 一律用下面这两个函数，读写都按本地时区走。
+            function parseLocalDate(str) {
+                if (!str) return new Date(NaN);
+                const parts = String(str).split('-');
+                return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+            }
+            function toLocalDateStr(dateObj) {
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
             function hsGetPeriodInfo(period) {
                 if (!period || !period.lastStart) {
                     return { statusShort: '未记录', hint: '记录第一次开始日期，让 TA 也能记挂你' };
                 }
-                const last = new Date(period.lastStart);
+                const last = parseLocalDate(period.lastStart);
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 last.setHours(0,0,0,0);
@@ -9286,7 +9301,7 @@ DB.init();
             // 工具：经期预测——基于上次开始日和周期长度，推算下次经期、排卵日（均为估算，仅供参考）
             // 工具：生成月经日历（某年某月），标出「实际记录的经期」「预测的未来经期」「预测排卵日」「今天」
             function hsBuildPeriodCalendarHTML(period, viewYear, viewMonth) {
-                const todayStr = new Date().toISOString().slice(0,10);
+                const todayStr = toLocalDateStr(new Date());
                 const history = (period && period.history) || [];
                 const cycleLen = (period && period.cycleLen) || 28;
                 const periodLen = (period && period.periodLen) || 5;
@@ -9294,18 +9309,18 @@ DB.init();
                 // 1) 实际记录过的经期日子（每条历史记录的 start~end，未结束的按 periodLen 估算）
                 const actualDays = new Set();
                 history.forEach(h => {
-                    const s = new Date(h.start); s.setHours(0,0,0,0);
-                    const e = h.end ? new Date(h.end) : new Date(s.getTime() + (periodLen-1)*86400000);
+                    const s = parseLocalDate(h.start); s.setHours(0,0,0,0);
+                    const e = h.end ? parseLocalDate(h.end) : new Date(s.getTime() + (periodLen-1)*86400000);
                     e.setHours(0,0,0,0);
                     for (let d = new Date(s); d <= e; d = new Date(d.getTime()+86400000)) {
-                        actualDays.add(d.toISOString().slice(0,10));
+                        actualDays.add(toLocalDateStr(d));
                     }
                 });
                 // 2) 预测的未来经期日子 + 排卵日（从最近一次开始日往后推算，推到能覆盖当前查看月份为止）
                 const predictedDays = new Set();
                 const ovuDays = new Set();
                 if (period && period.lastStart) {
-                    let cursor = new Date(period.lastStart); cursor.setHours(0,0,0,0);
+                    let cursor = parseLocalDate(period.lastStart); cursor.setHours(0,0,0,0);
                     const viewMonthEnd = new Date(viewYear, viewMonth+1, 0);
                     let guard = 0;
                     while (cursor < viewMonthEnd && guard < 60) {
@@ -9313,11 +9328,11 @@ DB.init();
                         guard++;
                         const s = cursor, e = new Date(cursor.getTime() + (periodLen-1)*86400000);
                         for (let d = new Date(s); d <= e; d = new Date(d.getTime()+86400000)) {
-                            const key = d.toISOString().slice(0,10);
+                            const key = toLocalDateStr(d);
                             if (!actualDays.has(key)) predictedDays.add(key);
                         }
                         const ovu = new Date(cursor.getTime() - 14*86400000);
-                        ovuDays.add(ovu.toISOString().slice(0,10));
+                        ovuDays.add(toLocalDateStr(ovu));
                     }
                 }
 
@@ -9329,7 +9344,7 @@ DB.init();
                 for (let i = 0; i < startWeekday; i++) cells += '<div></div>';
                 for (let d = 1; d <= daysInMonth; d++) {
                     const dateObj = new Date(viewYear, viewMonth, d);
-                    const key = dateObj.toISOString().slice(0,10);
+                    const key = toLocalDateStr(dateObj);
                     const isToday = key === todayStr;
                     const isActual = actualDays.has(key);
                     const isPred = predictedDays.has(key);
@@ -9364,7 +9379,7 @@ DB.init();
             function hsGetPeriodPrediction(period) {
                 if (!period || !period.lastStart) return null;
                 const cycleLen = period.cycleLen || 28;
-                const last = new Date(period.lastStart); last.setHours(0,0,0,0);
+                const last = parseLocalDate(period.lastStart); last.setHours(0,0,0,0);
                 const today = new Date(); today.setHours(0,0,0,0);
                 if (isNaN(last.getTime())) return null;
                 // 下次预计 = 上次开始日 + 一个周期；若已逾期则继续按周期累加到今天之后
@@ -9387,7 +9402,7 @@ DB.init();
                 
                 const renderList = () => {
                     const habits = hsGet(c.id, 'healthHabits', []);
-                    const todayStr = new Date().toISOString().slice(0,10);
+                    const todayStr = toLocalDateStr(new Date());
                     
                     if (habits.length === 0) {
                         body.innerHTML = `
@@ -9413,7 +9428,7 @@ DB.init();
                         const todayInHist = hist.includes(todayStr);
                         if (!todayInHist) cur.setDate(cur.getDate() - 1);
                         for (let i = 0; i < 365; i++) {
-                            const s = cur.toISOString().slice(0,10);
+                            const s = toLocalDateStr(cur);
                             if (hist.includes(s)) { streak++; cur.setDate(cur.getDate() - 1); }
                             else break;
                         }
@@ -9466,7 +9481,7 @@ DB.init();
                             const h = habits[idx];
                             if (!h) return;
                             h.history = h.history || [];
-                            const todayStr = new Date().toISOString().slice(0,10);
+                            const todayStr = toLocalDateStr(new Date());
                             if (h.history.includes(todayStr)) {
                                 // 取消打卡
                                 h.history = h.history.filter(d => d !== todayStr);
@@ -9579,7 +9594,7 @@ DB.init();
                 const render = () => {
                     const period = hsGet(c.id, 'periodData', null);
                     const info = hsGetPeriodInfo(period);
-                    const todayStr = new Date().toISOString().slice(0,10);
+                    const todayStr = toLocalDateStr(new Date());
                     const inPeriod = period && period.inPeriod;
                     const history = (period && period.history) || [];
                     
@@ -9648,9 +9663,9 @@ DB.init();
                     if (history.length > 0) {
                         const histEl = body.querySelector('#hs-period-history');
                         history.slice(0, 10).forEach((h, hIdx) => {
-                            const d = new Date(h.start);
+                            const d = parseLocalDate(h.start);
                             const dateStr = (d.getMonth()+1) + '月' + d.getDate() + '日';
-                            const dur = h.end ? Math.round((new Date(h.end) - d) / 86400000) + 1 : null;
+                            const dur = h.end ? Math.round((parseLocalDate(h.end) - d) / 86400000) + 1 : null;
                             const card = document.createElement('div');
                             card.dataset.hidx = hIdx;
                             card.style.cssText = 'background:#fff;border-radius:10px;padding:10px 12px;border:1px solid #f0e0dc;display:flex;justify-content:space-between;align-items:center;cursor:pointer;';
@@ -9674,8 +9689,8 @@ DB.init();
                         if (period.history.length > 24) period.history.length = 24;
                         // 计算周期（如果有上次记录）
                         if (period.history.length >= 2) {
-                            const last = new Date(period.history[1].start);
-                            const cur = new Date(todayStr);
+                            const last = parseLocalDate(period.history[1].start);
+                            const cur = parseLocalDate(todayStr);
                             const days = Math.round((cur - last) / 86400000);
                             if (days >= 21 && days <= 45) period.cycleLen = days; // 自动学习周期
                         }
@@ -9717,7 +9732,7 @@ DB.init();
                         period.inPeriod = false;
                         if (period.history && period.history[0]) {
                             period.history[0].end = todayStr;
-                            const realLen = Math.round((new Date(todayStr) - new Date(period.history[0].start)) / 86400000) + 1;
+                            const realLen = Math.round((parseLocalDate(todayStr) - parseLocalDate(period.history[0].start)) / 86400000) + 1;
                             if (realLen >= 2 && realLen <= 12) period.periodLen = realLen;
                         }
                         hsSet(c.id, 'periodData', period);
@@ -9756,7 +9771,7 @@ DB.init();
             function hsOpenPeriodBackdate(appPage, c, onDone) {
                 const period = hsGet(c.id, 'periodData', { history: [] });
                 const inPeriod = period.inPeriod;
-                const todayStr = new Date().toISOString().slice(0,10);
+                const todayStr = toLocalDateStr(new Date());
                 const dlg = document.createElement('div');
                 dlg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:30px;';
                 dlg.innerHTML = `<div style="background:#FBF9F4;border-radius:14px;padding:18px;max-width:280px;width:100%;">
@@ -9767,7 +9782,7 @@ DB.init();
                         <span class="hs-bd-type" data-type="end" style="flex:1;text-align:center;padding:9px 0;border-radius:10px;font-size:12px;cursor:pointer;background:#fff;color:#9A7872;border:1px solid #f0e0dc;box-sizing:border-box;${inPeriod ? '' : 'opacity:0.4;pointer-events:none;'}">🌿 补记结束</span>
                     </div>
                     ${inPeriod ? '' : '<div style="font-size:10px;color:#C9BDB6;text-align:center;margin-bottom:14px;">（当前没有进行中的记录，补记不了结束日期）</div>'}
-                    <input id="hs-bd-date" type="date" max="${todayStr}" value="${todayStr}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:14px;">
+                    <input id="hs-bd-date" type="date" max="${todayStr}" value="${todayStr}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:16px;-webkit-appearance:none;appearance:none;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:14px;">
                     <div style="display:flex;gap:8px;justify-content:center;">
                         <span class="hs-bd-cancel" style="background:#fff;color:#9A7872;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #f0e0dc;">取消</span>
                         <span class="hs-bd-ok" style="background:#FFD3D4;color:#775C56;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;">保存</span>
@@ -9793,8 +9808,8 @@ DB.init();
                         p.history.unshift({ start: dateVal, end: null, symptoms: [] });
                         if (p.history.length > 24) p.history.length = 24;
                         if (p.history.length >= 2) {
-                            const last = new Date(p.history[1].start);
-                            const cur = new Date(dateVal);
+                            const last = parseLocalDate(p.history[1].start);
+                            const cur = parseLocalDate(dateVal);
                             const days = Math.round((cur - last) / 86400000);
                             if (days >= 21 && days <= 45) p.cycleLen = days;
                         }
@@ -9803,7 +9818,7 @@ DB.init();
                     } else {
                         if (p.history[0]) {
                             p.history[0].end = dateVal;
-                            const realLen = Math.round((new Date(dateVal) - new Date(p.history[0].start)) / 86400000) + 1;
+                            const realLen = Math.round((parseLocalDate(dateVal) - parseLocalDate(p.history[0].start)) / 86400000) + 1;
                             if (realLen >= 1 && realLen <= 12) p.periodLen = realLen;
                         }
                         p.inPeriod = false;
@@ -9820,15 +9835,15 @@ DB.init();
                 const period = hsGet(c.id, 'periodData', { history: [] });
                 const h = (period.history || [])[hIdx];
                 if (!h) return;
-                const todayStr = new Date().toISOString().slice(0,10);
+                const todayStr = toLocalDateStr(new Date());
                 const dlg = document.createElement('div');
                 dlg.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:30px;';
                 dlg.innerHTML = `<div style="background:#FBF9F4;border-radius:14px;padding:18px;max-width:280px;width:100%;">
                     <div style="font-size:14px;color:#775C56;font-weight:600;text-align:center;margin-bottom:14px;">修改这条记录</div>
                     <div style="font-size:11px;color:#9A7872;margin-bottom:4px;">开始日期</div>
-                    <input id="hs-ed-start" type="date" max="${todayStr}" value="${h.start}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:10px;">
+                    <input id="hs-ed-start" type="date" max="${todayStr}" value="${h.start}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:16px;-webkit-appearance:none;appearance:none;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:10px;">
                     <div style="font-size:11px;color:#9A7872;margin-bottom:4px;">结束日期（还没结束就留空）</div>
-                    <input id="hs-ed-end" type="date" max="${todayStr}" value="${h.end || ''}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:13px;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:16px;">
+                    <input id="hs-ed-end" type="date" max="${todayStr}" value="${h.end || ''}" style="width:100%;padding:9px;border:1px solid #f0e0dc;border-radius:10px;font-size:16px;-webkit-appearance:none;appearance:none;color:#775C56;background:#fff;box-sizing:border-box;margin-bottom:16px;">
                     <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">
                         <span class="hs-ed-cancel" style="background:#fff;color:#9A7872;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #f0e0dc;">取消</span>
                         <span class="hs-ed-save" style="background:#FFD3D4;color:#775C56;padding:7px 22px;border-radius:12px;font-size:12px;cursor:pointer;">保存</span>
@@ -10140,7 +10155,7 @@ DB.init();
                     period.history = period.history || [];
                     if (!period.history[0]) {
                         // 没有进行中的记录，创建一个
-                        period.history.unshift({ start: new Date().toISOString().slice(0,10), end: null, symptoms: syms });
+                        period.history.unshift({ start: toLocalDateStr(new Date()), end: null, symptoms: syms });
                     } else {
                         period.history[0].symptoms = syms;
                     }
@@ -10718,7 +10733,7 @@ DB.init();
                             renderPhoneLog();
                         }
                         else if (appId === 'album') {
-                            appPage.innerHTML = `<div class="app-header-520"><span class="close-btn-520" id="album-back">‹</span><h2 class="title" style="position:absolute;left:50%;top:50%;transform:translateX(-50%);color:#775C56;">相册</h2><span></span></div><div class="app-content" id="album-grid" style="background:#FBF9F4;padding:8px;"></div><div id="album-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:999;flex-direction:column;align-items:center;justify-content:center;"><img id="album-big" style="max-width:90%;max-height:75%;border-radius:8px;object-fit:contain;"><div id="album-time" style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:14px;"></div><div style="display:flex;gap:20px;margin-top:20px;align-items:center;"><button id="album-prev" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;">‹</button><button id="album-close-btn" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:14px;padding:8px 16px;border-radius:20px;cursor:pointer;">关闭</button><button id="album-del" style="background:rgba(255,255,255,0.15);border:none;color:#FF6B6B;font-size:14px;padding:8px 16px;border-radius:20px;cursor:pointer;">删除</button><button id="album-next" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;">›</button></div><div id="album-confirm" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;z-index:5;"><div style="background:linear-gradient(180deg,#FFFDF9,#FFF1F2);border-radius:18px;padding:22px 20px;width:230px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.25);"><div style="font-size:14px;color:#9E5F62;font-weight:600;margin-bottom:6px;">删掉这张照片？</div><div style="font-size:11px;color:#BA8488;line-height:1.6;margin-bottom:16px;">聊天里的原图不受影响哦～</div><div style="display:flex;gap:8px;"><button id="album-del-no" style="flex:1;border:none;border-radius:13px;padding:10px;background:#fff;color:#BA8488;border:1px solid #FAD2D5;font-size:13px;cursor:pointer;">再想想</button><button id="album-del-yes" style="flex:1;border:none;border-radius:13px;padding:10px;background:#F7A8AC;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">删掉</button></div></div></div></div>`;
+                            appPage.innerHTML = `<div class="app-header-520"><span class="close-btn-520" id="album-back">‹</span><h2 class="title" style="position:absolute;left:50%;top:50%;transform:translateX(-50%);color:#775C56;">相册</h2><span></span></div><div class="app-content" id="album-grid" style="background:#FBF9F4;padding:8px;"></div><div id="album-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:999;flex-direction:column;align-items:center;justify-content:center;"><img id="album-big" style="max-width:90%;max-height:75%;border-radius:8px;object-fit:contain;"><div id="album-time" style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:14px;"></div><div style="display:flex;gap:20px;margin-top:20px;align-items:center;"><button id="album-prev" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;">‹</button><button id="album-close-btn" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:14px;padding:8px 16px;border-radius:20px;cursor:pointer;">关闭</button><button id="album-del" style="background:rgba(255,255,255,0.15);border:none;color:#FF6B6B;font-size:14px;padding:8px 16px;border-radius:20px;cursor:pointer;">删除</button><button id="album-next" style="background:rgba(255,255,255,0.15);border:none;color:white;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;">›</button></div><div id="album-confirm" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;z-index:5;"><div style="background:#FBF9F4;border-radius:18px;padding:22px 20px;width:230px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.25);"><div style="font-size:14px;color:#775C56;font-weight:600;margin-bottom:6px;">删掉这张照片？</div><div style="font-size:11px;color:#775C56;opacity:0.7;line-height:1.6;margin-bottom:16px;">聊天里的原图不受影响哦～</div><div style="display:flex;gap:8px;"><button id="album-del-no" style="flex:1;border:none;border-radius:13px;padding:10px;background:#D5EBE4;color:#775C56;font-size:13px;cursor:pointer;">再想想</button><button id="album-del-yes" style="flex:1;border:none;border-radius:13px;padding:10px;background:#FFD3D4;color:#775C56;font-size:13px;font-weight:600;cursor:pointer;">删掉</button></div></div></div></div>`;
                             appPage.querySelector('#album-back').onclick = () => { appPage.innerHTML=''; appPage.classList.remove('active'); };
                             const album = JSON.parse(localStorage.getItem('chat_album')||'[]');
                             const gridEl = appPage.querySelector('#album-grid');
