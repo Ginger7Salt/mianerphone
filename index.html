@@ -837,7 +837,7 @@ DB.init();
                     <div style="grid-column: span 2; text-align: center;">
                         <div id="tea-widget" class="love-widget" style="position: relative; overflow: hidden; cursor: pointer; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);">
                             <div id="widget-bg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center;"></div>
-                            <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 10px; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                            <div style="position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 10px; color: white; text-shadow: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);">
                                <div class="flex flex-row items-center justify-center mb-2 gap-3">
                                    <img id="widget-avatar-me" src="" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; object-fit: cover; background-color: rgba(255,255,255,0.3);">
                                    <img id="widget-avatar-lover" src="" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; object-fit: cover; background-color: rgba(255,255,255,0.3);">
@@ -846,8 +846,31 @@ DB.init();
                                <div id="love-days-text" class="days-count">...</div>
                             </div>
                         </div>
-                        <span class="text-xs mt-1 text-center widget-label" style="color:white;text-shadow: 0 1px 3px rgba(0,0,0,0.15);">Tea Widget</span>
+                        <span class="text-xs mt-1 text-center widget-label" style="color:white;text-shadow: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);">Tea Widget</span>
                     </div>
+                </div>
+                <div style="text-align: center;margin-top:-8.5px;">
+                <div id="period-reminder-widget" style="margin:0 8.55px 0 8.55px;cursor:pointer;position:relative;overflow:hidden;border-radius:20px;background:rgba(255,255,255,0.3);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);">
+                    <div id="period-widget-bg" style="position:absolute;top:0;left:0;width:100%;height:100%;background-size:cover;background-position:center;"></div>
+                    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:10px 16px;color:white;text-shadow:0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);">
+                    <div style="flex-shrink:0;position:relative;width:76px;box-sizing:border-box;background:#fff;border-radius:14px;box-shadow:0 3px 10px rgba(0,0,0,0.2);padding:6px 5px 6px 5px;text-align:center;margin-left:10px;">
+                        <div style="position:absolute;left:-7px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:8px solid #fff;filter:drop-shadow(-1px 1px 1px rgba(0,0,0,0.1));"></div>
+                        <div style="position:relative;width:50px;height:50px;margin:0 auto;">
+                            <div id="period-widget-photo" style="width:50px;height:50px;border-radius:50%;background-color:#F6E9E7;background-size:cover;background-position:center;background-repeat:no-repeat;box-sizing:border-box;border:1.5px solid #E2DCD7;">
+                                <svg id="period-widget-photo-fallback" width="22" height="22" viewBox="0 0 24 24" fill="none" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-3.31 0-8 1.79-8 4v2h16v-2c0-2.21-4.69-4-8-4Z" fill="#B08984" fill-opacity="0.85"/></svg>
+                            </div>
+                            <div style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;border-radius:50%;background:#FFD3D4;border:2px solid #ffffff;box-shadow:0 1px 2px rgba(0,0,0,0.15);"></div>
+                        </div>
+                        <div id="period-widget-caption" style="margin-top:2px;font-size:8px;line-height:1.15;color:#775C56;text-shadow:none;white-space:nowrap;">点开看看</div>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:11px;opacity:0.85;margin-bottom:2px;">月经提醒</div>
+                        <div id="period-widget-status" style="font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">...</div>
+                        <div id="period-widget-hint" style="font-size:11px;opacity:0.8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                    </div>
+                    </div>
+                </div>
+                <span class="text-xs text-center widget-label" style="display:block;margin-top:4px;color:white;text-shadow: 0 1px 4px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35);">Tea Widget</span>
                 </div>
             </div>
             <div class="page-dots" id="page-dots">
@@ -2447,11 +2470,20 @@ DB.init();
                         </div>
                         <div class="settings-item">
                             <div>
-                                <h3 class="font-bold">小组件配置</h3>
+                                <h3 class="font-bold">纪念日小组件</h3>
                                 <div class="grid grid-cols-3 gap-4 p-4" id="widget-config-list">
                                     <!-- Widget config UI will be rendered here -->
                                 </div>
                                 <button id="save-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                            </div>
+                        </div>
+                        <div class="settings-item">
+                            <div>
+                                <h3 class="font-bold">月经提醒小组件</h3>
+                                <div class="grid grid-cols-3 gap-4 p-4" id="period-widget-config-list">
+                                    <!-- Period widget config UI will be rendered here -->
+                                </div>
+                                <button id="save-period-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -3322,13 +3354,45 @@ DB.init();
                                 backgroundColor: null,
                             });
                             document.body.removeChild(container);
-                            const a = document.createElement('a');
-                            a.href = canvas.toDataURL('image/png');
-                            a.download = `聊天截图_${contactName}.png`;
-                            a.click();
+
+                            // iOS Safari 等移动端浏览器不支持 <a download> 触发保存，
+                            // 优先用 Web Share API 弹出系统分享面板（可直接"存储图像"）
+                            const dataUrl = canvas.toDataURL('image/png');
+                            const filename = `聊天截图_${contactName}.png`;
+                            let sharedOk = false;
+                            try {
+                                const blob = await (await fetch(dataUrl)).blob();
+                                const file = new File([blob], filename, { type: 'image/png' });
+                                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    await navigator.share({ files: [file], title: filename });
+                                    sharedOk = true;
+                                }
+                            } catch(shareErr) {
+                                // 用户取消分享也会走到这里，不当作失败
+                                if (shareErr && shareErr.name === 'AbortError') sharedOk = true;
+                            }
+
+                            if (!sharedOk) {
+                                // 回退方案：桌面浏览器走原来的下载逻辑；
+                                // 不支持分享/下载的移动浏览器则在新标签页打开图片，提示手动长按保存
+                                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                                if (!isMobile) {
+                                    const a = document.createElement('a');
+                                    a.href = dataUrl;
+                                    a.download = filename;
+                                    a.click();
+                                } else {
+                                    const win = window.open(dataUrl, '_blank');
+                                    if (!win) {
+                                        alert('图片已生成，但浏览器拦截了新窗口。请允许弹出窗口后重试，或长按下方提示区域保存。');
+                                    } else {
+                                        alert('图片已在新标签页打开，长按图片选择"存储图像"即可保存～');
+                                    }
+                                }
+                            }
                         } catch(e) {
                             if(document.body.contains(container)) document.body.removeChild(container);
-                            alert('截图失败: ' + e.message);
+                            alert('截图失败: ' + (e && e.message ? e.message : e) + '\n（如果选的消息很多、截图很长，可以试试分批截取）');
                         }
                         cancelSelect();
                     };
@@ -9738,7 +9802,7 @@ DB.init();
                         }
                         period.lastStart = todayStr;
                         period.inPeriod = true;
-                        hsSet(c.id, 'periodData', period);
+                        hsSet(c.id, 'periodData', period); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                         // 先占位存一条 memory，AI 回复后追加 aiReply
                         const _memItem = { type: 'period', event: 'start', date: todayStr };
                         hsAddMemory(c.id, _memItem);
@@ -9777,7 +9841,7 @@ DB.init();
                             const realLen = Math.round((parseLocalDate(todayStr) - parseLocalDate(period.history[0].start)) / 86400000) + 1;
                             if (realLen >= 2 && realLen <= 12) period.periodLen = realLen;
                         }
-                        hsSet(c.id, 'periodData', period);
+                        hsSet(c.id, 'periodData', period); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                         render();
                     };
                     
@@ -9788,22 +9852,22 @@ DB.init();
                     body.querySelector('.hs-period-cycle-minus').onclick = () => {
                         const period = hsGet(c.id, 'periodData', {});
                         period.cycleLen = Math.max(21, ((period.cycleLen || 28) - 1));
-                        hsSet(c.id, 'periodData', period); render();
+                        hsSet(c.id, 'periodData', period); render(); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     };
                     body.querySelector('.hs-period-cycle-plus').onclick = () => {
                         const period = hsGet(c.id, 'periodData', {});
                         period.cycleLen = Math.min(45, ((period.cycleLen || 28) + 1));
-                        hsSet(c.id, 'periodData', period); render();
+                        hsSet(c.id, 'periodData', period); render(); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     };
                     body.querySelector('.hs-period-len-minus').onclick = () => {
                         const period = hsGet(c.id, 'periodData', {});
                         period.periodLen = Math.max(2, ((period.periodLen || 5) - 1));
-                        hsSet(c.id, 'periodData', period); render();
+                        hsSet(c.id, 'periodData', period); render(); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     };
                     body.querySelector('.hs-period-len-plus').onclick = () => {
                         const period = hsGet(c.id, 'periodData', {});
                         period.periodLen = Math.min(10, ((period.periodLen || 5) + 1));
-                        hsSet(c.id, 'periodData', period); render();
+                        hsSet(c.id, 'periodData', period); render(); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     };
                 };
                 render();
@@ -9865,7 +9929,7 @@ DB.init();
                         }
                         p.inPeriod = false;
                     }
-                    hsSet(c.id, 'periodData', p);
+                    hsSet(c.id, 'periodData', p); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     dlg.remove();
                     if (onDone) onDone();
                 };
@@ -9903,7 +9967,7 @@ DB.init();
                     p.history[hIdx].start = s;
                     p.history[hIdx].end = e || null;
                     if (hIdx === 0) { p.lastStart = s; p.inPeriod = !e; }
-                    hsSet(c.id, 'periodData', p);
+                    hsSet(c.id, 'periodData', p); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     dlg.remove();
                     if (onDone) onDone();
                 };
@@ -9915,7 +9979,7 @@ DB.init();
                         p.lastStart = p.history[0] ? p.history[0].start : null;
                         p.inPeriod = p.history[0] ? !p.history[0].end : false;
                     }
-                    hsSet(c.id, 'periodData', p);
+                    hsSet(c.id, 'periodData', p); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     dlg.remove();
                     if (onDone) onDone();
                 };
@@ -10201,7 +10265,7 @@ DB.init();
                     } else {
                         period.history[0].symptoms = syms;
                     }
-                    hsSet(c.id, 'periodData', period);
+                    hsSet(c.id, 'periodData', period); if (window.hsRefreshPeriodWidget) window.hsRefreshPeriodWidget();
                     dlg.remove();
                     // 先占位存一条 memory，AI 回复后追加 aiReply
                     hsAddMemory(c.id, { type: 'symptom', symptoms: syms });
@@ -10563,6 +10627,121 @@ DB.init();
                 
                 backBtn.onclick = () => appPage.classList.remove('active');
             }
+
+            // ===== 首页月经提醒小组件 =====
+            // 不再自己单独存一份数据，而是直接读"心跳同频中"里当前同频对象的真实月经记录（hs_<contactId>_periodData）
+            function hsGetActiveContactId() {
+                try {
+                    const contacts = (typeof DB !== 'undefined' && DB.getContacts) ? DB.getContacts() : [];
+                    let id = localStorage.getItem('hs_currentContact');
+                    if (!id || !contacts.find(c => c.id === id)) id = contacts[0] && contacts[0].id;
+                    return id || null;
+                } catch(e) { return null; }
+            }
+            function hsGetActivePeriodData() {
+                const id = hsGetActiveContactId();
+                if (!id) return null;
+                return hsGet(id, 'periodData', null);
+            }
+            function setupPeriodWidget() {
+                const widget = document.getElementById('period-reminder-widget');
+                if (!widget) return;
+                const statusEl = document.getElementById('period-widget-status');
+                const hintEl = document.getElementById('period-widget-hint');
+                const photoEl = document.getElementById('period-widget-photo');
+                const captionEl = document.getElementById('period-widget-caption');
+
+                async function resolvePeriodWidgetImg(val) {
+                    if (!val) return '';
+                    if (val.startsWith('imgdb://') && window.ImageDB) {
+                        try {
+                            await window.ImageDB.readyPromise;
+                            return await window.ImageDB.get(val.slice(8)) || '';
+                        } catch(e) { return ''; }
+                    }
+                    return val;
+                }
+
+                async function updatePeriodWidgetPhoto() {
+                    const photo = await resolvePeriodWidgetImg(localStorage.getItem('period_widget_photo'));
+                    if (photoEl) {
+                        photoEl.style.backgroundImage = photo ? `url(${photo})` : '';
+                        const fallback = document.getElementById('period-widget-photo-fallback');
+                        if (fallback) fallback.style.display = photo ? 'none' : '';
+                    }
+                }
+                window.updatePeriodWidgetDisplay = updatePeriodWidgetPhoto;
+
+                async function updatePeriodWidgetBg() {
+                    const bgEl = document.getElementById('period-widget-bg');
+                    const bg = await resolvePeriodWidgetImg(localStorage.getItem('period_widget_bg'));
+                    if (bg) {
+                        bgEl.style.backgroundImage = `url(${bg})`;
+                        widget.style.background = 'transparent';
+                        widget.style.backdropFilter = 'none';
+                        widget.style.webkitBackdropFilter = 'none';
+                    } else {
+                        bgEl.style.backgroundImage = '';
+                        widget.style.background = 'rgba(255, 255, 255, 0.3)';
+                        widget.style.backdropFilter = 'blur(10px)';
+                        widget.style.webkitBackdropFilter = 'blur(10px)';
+                    }
+                }
+                window.updatePeriodWidgetBg = updatePeriodWidgetBg;
+
+                function refresh() {
+                    const period = hsGetActivePeriodData();
+                    if (!period || !period.lastStart) {
+                        statusEl.textContent = '还没有记录';
+                        hintEl.textContent = '去心跳同频中记录';
+                        return;
+                    }
+                    const last = parseLocalDate(period.lastStart); last.setHours(0, 0, 0, 0);
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const cycleLen = period.cycleLen || 28;
+                    const periodLen = period.periodLen || 5;
+                    const daysSince = Math.floor((today - last) / 86400000);
+                    const inPeriodNow = !!period.inPeriod || (daysSince >= 0 && daysSince < periodLen);
+                    const daysToNext = cycleLen - daysSince;
+
+                    if (inPeriodNow) {
+                        statusEl.textContent = '记得好好休息。';
+                        hintEl.textContent = `经期第 ${daysSince + 1} 天`;
+                    } else if (daysToNext <= 0) {
+                        statusEl.textContent = '是不是要来了？';
+                        hintEl.textContent = '已超过预计日';
+                    } else {
+                        statusEl.textContent = `还有 ${daysToNext} 天`;
+                        const pred = hsGetPeriodPrediction(period);
+                        hintEl.textContent = pred ? `预计 ${pred.nextStartStr}` : '距离预测经期开始';
+                    }
+                }
+
+                // 点击小组件：不自己填写记录，跳转到"心跳同频中"里查看/记录真实的月经记录
+                widget.addEventListener('click', () => {
+                    const coupleIcon = document.querySelector('.app-icon[data-app="couple-space"]');
+                    if (coupleIcon) coupleIcon.click();
+                });
+
+                window.addEventListener('storage', (e) => {
+                    if (e.key && (e.key.endsWith('_periodData') || e.key === 'hs_currentContact')) refresh();
+                    if (e.key === 'period_widget_photo') updatePeriodWidgetPhoto();
+                    if (e.key === 'period_widget_bg') updatePeriodWidgetBg();
+                });
+                // 同一页面内修改经期数据时 storage 事件不会触发，暴露一个刷新方法给记录页主动调用
+                window.hsRefreshPeriodWidget = refresh;
+
+                // 首次加载时 DB（IndexedDB）可能还没读取完成，此时读联系人列表会是空的，
+                // 导致明明有数据也误判成"还没有记录"。等 DB 真正就绪后再刷新一次。
+                if (typeof DB !== 'undefined' && DB.readyPromise) {
+                    DB.readyPromise.then(refresh).catch(() => {});
+                }
+
+                refresh();
+                updatePeriodWidgetPhoto();
+                updatePeriodWidgetBg();
+            }
+            setupPeriodWidget();
 
             function setupTeaWidget() {
                 const widget = document.getElementById('tea-widget');
@@ -11013,9 +11192,89 @@ DB.init();
                                 };
                             }
 
+                            // --- Period Widget Config Logic ---
+                            function initSettingsPeriodWidgetLogic() {
+                                const listEl = appPage.querySelector('#period-widget-config-list');
+                                const saveBtn = appPage.querySelector('#save-period-widget-config-btn');
+                                if (!listEl || !saveBtn) return;
+                                let tempPeriodWidgetData = {};
+
+                                listEl.innerHTML = `
+                                    <div class="col-span-3 flex flex-col items-center gap-1">
+                                        <label id="period-widget-bg-label" class="relative w-full h-20 aspect-video flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer overflow-hidden bg-gray-50 hover:bg-gray-100">
+                                            <input type="file" class="hidden period-widget-input" data-key="period_widget_bg" accept="image/*">
+                                            <span id="period-widget-bg-plus" class="text-gray-400 text-xl ${localStorage.getItem('period_widget_bg') ? 'hidden' : ''}">+</span>
+                                        </label>
+                                        <span class="text-[10px] text-gray-500">小组件背景</span>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <label id="period-widget-photo-label" class="relative w-16 h-16 aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-full cursor-pointer overflow-hidden bg-gray-50 hover:bg-gray-100">
+                                            <input type="file" class="hidden period-widget-input" data-key="period_widget_photo" accept="image/*">
+                                            <span id="period-widget-photo-plus" class="text-gray-400 text-xl ${localStorage.getItem('period_widget_photo') ? 'hidden' : ''}">+</span>
+                                        </label>
+                                        <span class="text-[10px] text-gray-500">小组件照片</span>
+                                    </div>
+                                `;
+
+                                const resolveAndApply = async (key, labelId) => {
+                                    const val = localStorage.getItem(key);
+                                    if (!val) return;
+                                    let imgUrl = val;
+                                    if (val.startsWith('imgdb://') && window.ImageDB) {
+                                        try {
+                                            await window.ImageDB.readyPromise;
+                                            imgUrl = await window.ImageDB.get(val.slice(8)) || '';
+                                        } catch(e) { imgUrl = ''; }
+                                    }
+                                    if (imgUrl) {
+                                        const label = listEl.querySelector('#' + labelId);
+                                        if (label) {
+                                            label.style.backgroundImage = `url(${imgUrl})`;
+                                            label.style.backgroundSize = 'cover';
+                                            label.style.backgroundPosition = 'center';
+                                            label.style.borderStyle = 'solid';
+                                        }
+                                    }
+                                };
+                                resolveAndApply('period_widget_bg', 'period-widget-bg-label');
+                                resolveAndApply('period_widget_photo', 'period-widget-photo-label');
+
+                                listEl.querySelectorAll('.period-widget-input').forEach(input => {
+                                    input.onchange = (e) => handleImageUpload(e.target.files[0], input.dataset.key, tempPeriodWidgetData, input.parentElement);
+                                });
+
+                                saveBtn.onclick = async () => {
+                                    if (Object.keys(tempPeriodWidgetData).length === 0) {
+                                        alert('没有检测到修改');
+                                        return;
+                                    }
+                                    for (let key in tempPeriodWidgetData) {
+                                        try {
+                                            const val = tempPeriodWidgetData[key];
+                                            const ref = (val && val.startsWith && val.startsWith('data:') && window.ImageDB && window.ImageDB.saveAndRef)
+                                                ? await window.ImageDB.saveAndRef(val)
+                                                : val;
+                                            localStorage.setItem(key, ref);
+                                        } catch(err) {
+                                            localStorage.setItem(key, tempPeriodWidgetData[key]);
+                                        }
+                                    }
+                                    alert('小组件配置已保存');
+                                    if (window.updatePeriodWidgetDisplay) {
+                                        window.updatePeriodWidgetDisplay();
+                                    }
+                                    if (window.updatePeriodWidgetBg) {
+                                        window.updatePeriodWidgetBg();
+                                    }
+                                    tempPeriodWidgetData = {};
+                                    initSettingsContent(); // Re-init all settings
+                                };
+                            }
+
                             // Initialize all parts of the settings page
                             initAppIconLogic();
                             initSettingsWidgetLogic();
+                            initSettingsPeriodWidgetLogic();
                         }
 
                         const wallpaperUpload = appPage.querySelector('#wallpaper-upload');
