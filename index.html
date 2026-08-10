@@ -8125,13 +8125,6 @@ DB.init();
                 }
                 
                 renderAll();
-
-                // 如果是从"月经提醒小组件"点进来的，直接跳到月经记录页，不用再点一次
-                if (localStorage.getItem('hs_pendingWidgetNav') === 'period') {
-                    localStorage.removeItem('hs_pendingWidgetNav');
-                    const c = contacts.find(x => x.id === currentId);
-                    if (c) hsOpenPeriod(appPage, c, userNick);
-                }
                 
                 // 切换同频对象
                 appPage.querySelector('#hs-contact-switch').onclick = () => {
@@ -11681,6 +11674,19 @@ DB.init();
                     appPage.style.transformOrigin = `${((iconRect.left + iconRect.width / 2) - screenRect.left) / screenRect.width * 100}% ${((iconRect.top + iconRect.height / 2) - screenRect.top) / screenRect.height * 100}%`;
                     document.querySelector('.mobile-container').classList.add('app-open');
                     appPage.classList.add('active');
+
+                    // 如果是从"月经提醒小组件"点进来的，跳到月经记录页；不管心跳同频中是不是第一次打开都生效
+                    if (appId === 'couple-space' && localStorage.getItem('hs_pendingWidgetNav') === 'period') {
+                        localStorage.removeItem('hs_pendingWidgetNav');
+                        const contacts = (DB.getContacts ? DB.getContacts() : []).filter(c => c && c.name);
+                        if (contacts.length) {
+                            let currentId = localStorage.getItem('hs_currentContact');
+                            if (!currentId || !contacts.find(c => c.id === currentId)) currentId = contacts[0].id;
+                            const userNick = localStorage.getItem('user_nick') || '我';
+                            const c = contacts.find(x => x.id === currentId);
+                            if (c) hsOpenPeriod(appPage, c, userNick);
+                        }
+                    }
                     // 【修复"点520弹奇怪窗"bug】520(chat) app 每次打开都强制回到消息列表页（200）
                     // 原因：520 关闭时内容不清空只是藏起来，再点开停在上次离开的页。如果上次停在"我"，
                     // 那"拍一拍/恢复默认主题"两行就摆在那里，手机点图标的"幽灵点击"会穿透到下面误触它们。
