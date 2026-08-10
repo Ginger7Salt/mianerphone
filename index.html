@@ -8125,6 +8125,13 @@ DB.init();
                 }
                 
                 renderAll();
+
+                // 如果是从"月经提醒小组件"点进来的，直接跳到月经记录页，不用再点一次
+                if (localStorage.getItem('hs_pendingWidgetNav') === 'period') {
+                    localStorage.removeItem('hs_pendingWidgetNav');
+                    const c = contacts.find(x => x.id === currentId);
+                    if (c) hsOpenPeriod(appPage, c, userNick);
+                }
                 
                 // 切换同频对象
                 appPage.querySelector('#hs-contact-switch').onclick = () => {
@@ -10749,6 +10756,7 @@ DB.init();
 
                 // 点击小组件：不自己填写记录，跳转到"心跳同频中"里查看/记录真实的月经记录
                 widget.addEventListener('click', () => {
+                    localStorage.setItem('hs_pendingWidgetNav', 'period');
                     const coupleIcon = document.querySelector('.app-icon[data-app="couple-space"]');
                     if (coupleIcon) coupleIcon.click();
                 });
