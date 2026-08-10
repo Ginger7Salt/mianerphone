@@ -432,6 +432,23 @@
         .save-btn:active {
             transform: scale(0.95);
         }
+        .reset-btn {
+            background-color: #FFD3D4;
+            color: #775C56;
+            font-weight: 500;
+            border-radius: 10px;
+            padding: 7px 8px;
+            margin-top: 8px;
+            margin-left: 8px;
+            transition: transform 0.2s;
+            width: 76px;
+            font-size: 13px;
+            border: none;
+            box-shadow: none;
+        }
+        .reset-btn:active {
+            transform: scale(0.95);
+        }
         .couple-space-card { background-color: #FBF9F4; border-radius: 24px; padding: 16px; margin-bottom: 16px; box-shadow: 0 5px 15px rgba(255, 182, 193, 0.2); }
         .toggle-checkbox:checked { right: 0; border-color: #D5EBE4; }
         .toggle-checkbox:checked + .toggle-label { background-color: #D5EBE4; }
@@ -2462,14 +2479,17 @@ DB.init();
                 'settings': `
                     <div class="app-header"><span style="color:#775C56" class="cursor-pointer close-btn w-10 inline-block">‹</span><h2 class="font-bold" style="color:#775C56">系统设置</h2><span class="w-10"></span></div>
                     <div class="app-content p-5 pt-0">
-                        <div class="settings-item"><div><h3 class="font-bold" style="margin-top: 10px;">更换壁纸</h3><div class="wallpaper-options" style="margin-top: 8px;"><label for="wallpaper-upload" class="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg w-16 h-20 flex items-center justify-center bg-white"><div id="wallpaper-preview-container" class="wallpaper-preview w-full h-full bg-cover bg-center rounded-lg">+</div></label><input type="file" id="wallpaper-upload" accept="image/*" class="hidden"></div><button id="save-wallpaper-btn" class="save-btn" style="margin-top: 16px;">确认修改</button></div></div>
+                        <div class="settings-item"><div><h3 class="font-bold" style="margin-top: 10px;">更换壁纸</h3><div class="wallpaper-options" style="margin-top: 8px;"><label for="wallpaper-upload" class="cursor-pointer border-2 border-dashed border-gray-300 rounded-lg w-16 h-20 flex items-center justify-center bg-white"><div id="wallpaper-preview-container" class="wallpaper-preview w-full h-full bg-cover bg-center rounded-lg">+</div></label><input type="file" id="wallpaper-upload" accept="image/*" class="hidden"></div><div style="display:flex;"><button id="save-wallpaper-btn" class="save-btn" style="margin-top: 16px;">确认修改</button><button id="reset-wallpaper-btn" class="reset-btn" style="margin-top: 16px;">恢复默认</button></div></div></div>
                         <div class="settings-item">
                             <div>
                                 <h3 class="font-bold">更换应用图标</h3>
                                 <div class="grid grid-cols-4 gap-4 p-4" id="app-icon-list">
                                     <!-- Icons will be rendered here by initSettingsApp -->
                                 </div>
-                                <button id="save-icons-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                <div style="display:flex;">
+                                    <button id="save-icons-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                    <button id="reset-icons-btn" class="reset-btn" style="margin-top: -4px;">恢复默认</button>
+                                </div>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -2478,7 +2498,10 @@ DB.init();
                                 <div class="grid grid-cols-3 gap-4 p-4" id="widget-config-list">
                                     <!-- Widget config UI will be rendered here -->
                                 </div>
-                                <button id="save-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                <div style="display:flex;">
+                                    <button id="save-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                    <button id="reset-widget-config-btn" class="reset-btn" style="margin-top: -4px;">恢复默认</button>
+                                </div>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -2487,7 +2510,10 @@ DB.init();
                                 <div class="grid grid-cols-3 gap-4 p-4" id="period-widget-config-list">
                                     <!-- Period widget config UI will be rendered here -->
                                 </div>
-                                <button id="save-period-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                <div style="display:flex;">
+                                    <button id="save-period-widget-config-btn" class="save-btn" style="margin-top: -4px;">确认修改</button>
+                                    <button id="reset-period-widget-config-btn" class="reset-btn" style="margin-top: -4px;">恢复默认</button>
+                                </div>
                             </div>
                         </div>
                         <div class="settings-item">
@@ -2519,7 +2545,7 @@ DB.init();
                                 <input type="file" id="global-import-file" accept="application/json,.json" class="hidden">
                             </div>
                         </div>
-                        <div class="settings-item"><button id="restore-default-btn" class="w-full py-2 rounded-lg" style="background-color:#FFD3D4;color:#775C56;font-weight:500;">恢复默认</button></div>
+                        <div class="settings-item"><button id="restore-default-btn" class="w-full py-2 rounded-lg" style="background-color:#FFD3D4;color:#775C56;font-weight:500;">全局恢复默认</button></div>
                         <div class="settings-item"><button id="reset-settings-btn" class="w-full bg-red-500 text-white py-2 rounded-lg">重置所有设置</button></div>
                     </div>
                 `,
@@ -11105,6 +11131,17 @@ DB.init();
                                     tempIcons = {};
                                     initSettingsContent(); // Re-init all settings
                                 };
+
+                                const resetIconsBtn = appPage.querySelector('#reset-icons-btn');
+                                if (resetIconsBtn) resetIconsBtn.onclick = () => {
+                                    if (!confirm('确定恢复所有 app 图标为默认？')) return;
+                                    const iconKeys = Object.keys(localStorage).filter(k => k.startsWith('icon_'));
+                                    iconKeys.forEach(k => localStorage.removeItem(k));
+                                    tempIcons = {};
+                                    alert('图标已恢复默认');
+                                    renderHomeScreenIcons();
+                                    initSettingsContent(); // Re-init all settings
+                                };
                             }
 
                             // --- Widget Config Logic ---
@@ -11194,6 +11231,20 @@ DB.init();
                                     tempWidgetData = {};
                                     initSettingsContent(); // Re-init all settings
                                 };
+
+                                const resetWidgetConfigBtn = appPage.querySelector('#reset-widget-config-btn');
+                                if (resetWidgetConfigBtn) resetWidgetConfigBtn.onclick = () => {
+                                    if (!confirm('确定恢复纪念日小组件为默认外观？')) return;
+                                    localStorage.removeItem('widget_bg');
+                                    localStorage.removeItem('widget_avatar_me');
+                                    localStorage.removeItem('widget_avatar_lover');
+                                    tempWidgetData = {};
+                                    alert('小组件已恢复默认');
+                                    if (window.updateWidgetDisplay) {
+                                        window.updateWidgetDisplay();
+                                    }
+                                    initSettingsContent(); // Re-init all settings
+                                };
                             }
 
                             // --- Period Widget Config Logic ---
@@ -11273,6 +11324,22 @@ DB.init();
                                     tempPeriodWidgetData = {};
                                     initSettingsContent(); // Re-init all settings
                                 };
+
+                                const resetPeriodWidgetBtn = appPage.querySelector('#reset-period-widget-config-btn');
+                                if (resetPeriodWidgetBtn) resetPeriodWidgetBtn.onclick = () => {
+                                    if (!confirm('确定恢复月经提醒小组件为默认外观？')) return;
+                                    localStorage.removeItem('period_widget_bg');
+                                    localStorage.removeItem('period_widget_photo');
+                                    tempPeriodWidgetData = {};
+                                    alert('小组件已恢复默认');
+                                    if (window.updatePeriodWidgetDisplay) {
+                                        window.updatePeriodWidgetDisplay();
+                                    }
+                                    if (window.updatePeriodWidgetBg) {
+                                        window.updatePeriodWidgetBg();
+                                    }
+                                    initSettingsContent(); // Re-init all settings
+                                };
                             }
 
                             // Initialize all parts of the settings page
@@ -11342,6 +11409,19 @@ DB.init();
                                     alert('保存失败：' + err.message);
                                 }
                             }
+                        };
+                        const resetWallpaperBtn = appPage.querySelector('#reset-wallpaper-btn');
+                        if (resetWallpaperBtn) resetWallpaperBtn.onclick = () => {
+                            if (!confirm('确定恢复默认壁纸？')) return;
+                            localStorage.removeItem('customWallpaper');
+                            localStorage.removeItem('wallpaper');
+                            tempUrl = null;
+                            const defaultWp = 'https://images.unsplash.com/photo-1500964757637-c85e8a162699?q=80&w=2703&auto=format&fit=crop';
+                            screen.style.backgroundImage = `url('${defaultWp}')`;
+                            preview.style.backgroundImage = '';
+                            preview.textContent = '+';
+                            setWpSelected(false);
+                            alert('壁纸已恢复默认');
                         };
                         // 恢复默认壁纸、图标、小组件（不删聊天/联系人数据）
                         const restoreBtn = appPage.querySelector('#restore-default-btn');
